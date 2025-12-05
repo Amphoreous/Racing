@@ -1,0 +1,50 @@
+name: "CodeQL Advanced"
+
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+    # The branches below must be a subset of the branches above
+    branches: [ "**" ]
+  schedule:
+    - cron: '0 0 * * 0'
+
+jobs:
+  analyze:
+    name: Analyze
+    runs-on: windows-latest
+    permissions:
+      # required for all workflows
+      security-events: write
+
+      # required to fetch internal or private CodeQL packs
+      packages: read
+
+      # only required for workflows in private repositories
+      actions: read
+      contents: read
+      
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'cpp' ]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: ${{ matrix.language }}
+
+    - name: Install Visual Studio Build Tools
+      uses: microsoft/setup-msbuild@v1.1
+
+    - name: Build project
+      run: |
+        ./build-VisualStudio2022.bat
+        msbuild Pinball.sln /p:Configuration=Release /p:Platform=x64
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3

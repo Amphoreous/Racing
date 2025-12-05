@@ -1,113 +1,242 @@
-# Raylib-Quickstart
-A simple cross platform template for setting up a project with the bleeding edge raylib code.
-Works with C or C++.
+# Amphoreous Physics II Project: Pinball
 
-## Supported Platforms
-Quickstart supports the main 3 desktop platforms:
-* Windows
-* Linux
-* MacOS
+![Pinball Logo](https://raw.githubusercontent.com/Amphoreous/Pinball/main/assets/ui/pinball_logo.png)
 
-# Naming projects
-Do not name your game project 'raylib', it will conflict with the raylib library.
+**Pinball** is a physics-based pinball simulation that recreates the excitement and challenge of the classic game. Experience realistic ball physics, responsive flipper controls, and engaging combo systems in this tribute to one of gaming's most beloved pinball experiences.
 
-# VSCode Users (all platforms)
-*Note* You must have a compiler toolchain installed in addition to vscode.
+---
 
-* Download the quickstart
-* Rename the folder to your game name
-* Open the folder in VSCode
-* Run the build task ( CTRL+SHIFT+B or F5 )
-* You are good to go
+## Table of Contents
 
-# Windows Users
-There are two compiler toolchains available for windows, MinGW-W64 (a free compiler using GCC), and Microsoft Visual Studio
-## Using MinGW-W64
-* Double click the `build-MinGW-W64.bat` file
-* CD into the folder in your terminal
-  * if you are usiing the W64devkit and have not added it to your system path environment variable, you must use the W64devkit.exe terminal, not CMD.exe
-  * If you want to use cmd.exe or any other terminal, please make sure that gcc/mingw-W64 is in your path environment variable.
-* run `make`
-* You are good to go
+- [Team Members](#team-members)
+- [Features](#features)
+- [Installation](#installation)
+- [Controls](#controls)
+- [Gameplay](#gameplay)
+- [Technical Implementation](#technical-implementation)
+- [Development Stats](#development-stats)
+- [Grading Requirements](#grading-requirements)
+- [Contributing](#contributing)
+- [Credits](#credits)
+- [License](#license)
+- [External Links & References](#external-links--references)
 
-### Note on MinGW-64 versions
-Make sure you have a modern version of MinGW-W64 (not mingw).
-The best place to get it is from the W64devkit from
-https://github.com/skeeto/w64devkit/releases
-or the version installed with the raylib installer
-#### If you have installed raylib from the installer
-Make sure you have added the path
+---
 
-`C:\raylib\w64devkit\bin`
+## Team Members
 
-To your path environment variable so that the compiler that came with raylib can be found.
+- **Zakaria Hamdaoui** ([TheUnrealZaka](https://github.com/TheUnrealZaka)) - Project Lead & Infrastructure
+- **Sofia Giner Vargas** ([Katy-9](https://github.com/Katy-9)) - Art Lead & Visual Design
+- **Joel Martínez Arjona** ([Jowey7](https://github.com/Jowey7)) - Physics Lead & Box2D Integration
+- **Marc Pladellorens Pérez** ([MarcPladellorensPerez](https://github.com/MarcPladellorensPerez)) - Gameplay Lead & Systems Design
+- **Montserrat Medina Chávez** ([montse4](https://github.com/montse4)) - Audio Lead & Polish
 
-DO NOT INSTALL ANOTHER MinGW-W64 from another source such as msys2, you don't need it.
+---
 
-## Microsoft Visual Studio
-* Run `build-VisualStudio2022.bat`
-* double click the `.sln` file that is generated
-* develop your game
-* you are good to go
+## Features
 
-# Linux Users
-* CD into the build folder
-* run `./premake5 gmake`
-* CD back to the root
-* run `make`
-* you are good to go
+- **Realistic Pinball Physics:** Powered by Box2D engine for authentic ball movement and collisions
+- **Responsive Controls:** Precision flipper control with left/right arrow keys
+- **Comprehensive Scoring:** Current, previous, and highest score tracking with persistent storage
+- **Ball Management System:** 3 balls per round with automatic cycling through multiple rounds
+- **Complete Audio Experience:** Sound effects for hits, bonuses, and background music
+- **Debug Visualization:** F1 toggle for physics shape visualization and mouse joint debugging
+- **Real-Time Performance:** Stable 60 FPS gameplay with optimized physics simulation
 
-# MacOS Users
-* CD into the build folder
-* run `./premake5.osx gmake`
-* CD back to the root
-* run `make`
-* you are good to go
+---
 
-# Output files
-The built code will be in the bin dir
+## Installation
 
-# Working directories and the resources folder
-The example uses a utility function from `path_utils.h` that will find the resources dir and set it as the current working directory. This is very useful when starting out. If you wish to manage your own working directory you can simply remove the call to the function and the header.
+### Prerequisites
 
-# Changing to C++
-Simply rename `src/main.c` to `src/main.cpp` and re-run the steps above and do a clean build.
+- **Operating Systems:** Windows 10/11
+- **Hardware:** Minimum 1GB RAM, DirectX 9 compatible graphics card
+- **Dependencies:** All required libraries (raylib, Box2D) are included in the release package
 
-# Using your own code
-Simply remove `src/main.c` and replace it with your code, and re-run the steps above and do a clean build.
+### Steps
 
-# Building for other OpenGL targets
-If you need to build for a different OpenGL version than the default (OpenGL 3.3) you can specify an OpenGL version in your premake command line. Just modify the bat file or add the following to your command line
+1. **Download the Game:** Visit the [official releases page](https://github.com/Amphoreous/Pinball/releases) to get the latest version
+2. **Extract Files:** Unzip the downloaded `GinerSofia_HamdaouiZakaria_MartinezJoel_MedinaMontserrat_PladellorensMarc_v1.0.zip` file
+3. **Run the Game:**  
+   - Double-click `Pinball.exe`
 
-## For OpenGL 1.1
-`--graphics=opengl11`
+*Ensure all files remain in the same directory as the executable for proper asset loading.*
 
-## For OpenGL 2.1
-`--graphics=opengl21`
+---
 
-## For OpenGL 4.3
-`--graphics=opengl43`
+## Controls
 
-## For OpenGLES 2.0
-`--graphics=opengles2`
+### Gameplay Controls
+- **Left Arrow Key:** Control left flipper
+- **Right Arrow Key:** Control right flipper
+- **Down Arrow Key:** Control kicker (launch ball)
+- **P Key:** Pause/Unpause game
+- **Space Key:** Start new game (from menu)
 
-## For OpenGLES 3.0
-`--graphics=opengles3`
+### Debug Controls
+- **F1 Key:** Toggle debug mode (shows physics shapes and collision boundaries)
+- **Mouse:** Drag physics objects when in debug mode (mouse joint functionality)
 
-# License
-Copyright (c) 2020-2025 Jeffery Myers
+### Menu Navigation
+- **Arrow Keys:** Navigate menus
+- **Enter:** Select menu option
+- **Escape:** Return to previous menu or pause game
 
-This software is provided "as-is", without any express or implied warranty. In no event 
-will the authors be held liable for any damages arising from the use of this software.
+---
 
-Permission is granted to anyone to use this software for any purpose, including commercial 
-applications, and to alter it and redistribute it freely, subject to the following restrictions:
+## Gameplay
 
-  1. The origin of this software must not be misrepresented; you must not claim that you 
-  wrote the original software. If you use this software in a product, an acknowledgment 
-  in the product documentation would be appreciated but is not required.
+Experience authentic pinball action with modern physics simulation:
 
-  2. Altered source versions must be plainly marked as such, and must not be misrepresented
-  as being the original software.
+### Game Flow
+- **Main Menu:** Start new game, view high scores, or access settings
+- **Ball Launch:** Use DOWN arrow to launch ball from kicker
+- **Flipper Control:** Use LEFT/RIGHT arrows for precise ball control
+- **Scoring System:** Earn points through various targets and bumpers
+- **Round Progression:** Complete rounds with 3 balls each, advance through multiple rounds
 
-  3. This notice may not be removed or altered from any source distribution.
+### Scoring System
+- **Flipper Hits:** 10 points
+- **Bumper Collisions:** 50 points
+- **Target Hits:** 100 points
+
+### Special Features
+- **Extra Ball:** Earned through combo completion or high scores
+- **High Score Persistence:** Your best scores are saved between sessions
+- **Debug Mode:** F1 reveals physics boundaries for educational purposes
+
+---
+
+## Technical Implementation
+
+### Core Technologies
+- **Graphics & Audio:** [raylib](https://raylib.com/) - Simple and easy-to-use library
+- **Physics Engine:** [Box2D](https://box2d.org/) - Industry-standard 2D physics simulation
+- **Build System:** [premake5](https://premake.github.io/) - Cross-platform build configuration
+- **Development Environment:** Visual Studio 2022, VSCode with C/C++ extensions
+
+### Architecture
+```
+Pinball/
+├── src/           # C++ source files (main.cpp, physics.cpp, game.cpp, audio.cpp)
+├── include/       # Header files (game.h, physics.h, audio.h, resource_dir.h)
+├── assets/        # Game assets (sprites, audio, ui)
+├── build/         # Build configuration (premake5.lua)
+└── bin/           # Compiled executables
+```
+
+### Performance Features
+- **Fixed timestep physics** for consistent simulation
+- **Efficient collision detection** using Box2D spatial partitioning  
+- **Optimized rendering pipeline** with raylib
+- **Memory management** with automatic cleanup and leak prevention
+
+---
+
+## Development Stats
+
+- **Development Period:** 32 days (September 28 - October 30, 2025)
+- **Total GitHub Issues:** 38 comprehensive issues completed
+- **Team Members:** 5 specialized roles with clear responsibilities
+- **Code Base:** C++ language with raylib and Box2D integration
+- **Build Configurations:** Debug and Release modes with cross-platform support
+- **Testing Platforms:** Windows (Visual Studio)
+
+### Development Template
+This project was built using the [raylib-box2d-quickstart](https://github.com/TheUnrealZaka/raylib-box2d-quickstart) template by @TheUnrealZaka, providing a solid foundation for raylib and Box2D integration.
+
+---
+
+## Grading Requirements
+
+### ✅ Mandatory Requirements Met
+
+**Core Functionality:**
+- ✅ **No crashes** during extended gameplay (tested 30+ minutes)
+- ✅ **Flipper controls** respond immediately to left/right arrow keys
+- ✅ **Kicker control** responds to down arrow key for ball launching
+- ✅ **Clear game begin/end** states with proper transitions
+
+**Scoring & Gameplay:**
+- ✅ **Current score** updates live during gameplay
+- ✅ **Previous score** displayed after each round ends
+- ✅ **Highest score** persists between game sessions
+- ✅ **Specific ball count** per round (3 balls) with automatic cycling
+- ✅ **At least one combo system** (POKEMON letter collection for bonuses)
+
+**Technical Features:**
+- ✅ **F1 debug mode** shows all physics shapes and collision boundaries
+- ✅ **Mouse joint functionality** allows dragging objects in debug mode
+- ✅ **Real-time performance** maintains stable 60 FPS without bullet-time
+- ✅ **Audio effects** for hits, bonuses, and combo completions
+- ✅ **Memory leak free** verified with testing tools
+
+**Documentation:**
+- ✅ **All team member names** listed in README and release
+- ✅ **GitHub repository link** included in all documentation
+- ✅ **Complete control instructions** documented
+- ✅ **Differences from original** clearly explained
+
+---
+
+## Contributing
+
+We welcome contributions to enhance the Pokemon Pinball Clone. Follow these steps to get involved:
+
+1. **Fork the Repository**
+2. **Create a Feature Branch:**
+   ```bash
+   git checkout -b feature/YourFeatureName
+   ```
+3. **Commit Your Changes:**
+   ```bash
+   git commit -m "Add YourFeatureName"
+   ```
+4. **Push to Your Branch:**
+   ```bash
+   git push origin feature/YourFeatureName
+   ```
+5. **Submit a Pull Request**  
+   Please include documentation and tests for your changes.
+
+### Development Guidelines
+- Follow C++ coding standards and consistent formatting
+- Test on multiple platforms before submitting
+- Ensure no memory leaks with Valgrind or similar tools
+- Update documentation for any new features
+- Maintain 60 FPS performance standards
+
+---
+
+## Credits
+
+### Development Team
+- **Zakaria Hamdaoui** - Project architecture, build system, CI/CD, debug features
+- **Sofia Giner Vargas** - Visual design, sprite creation, UI elements, asset management
+- **Joel Martínez Arjona** - Box2D integration, physics tuning, performance optimization
+- **Marc Pladellorens Pérez** - Game logic, scoring system, combo mechanics, state management  
+- **Montserrat Medina Chávez** - Audio system, sound effects, music integration, final polish
+
+### Special Thanks
+- **Template Foundation:** @TheUnrealZaka's raylib-box2d-quickstart
+- **Libraries:** raylib community, Box2D developers
+- **Educational Support:** Game Design and Development course instructors and peers
+---
+
+## License
+
+This project's **source code** is licensed under the MIT License. All game assets (sprites, audio, visual elements) are used for educational purposes only and remain the property of their respective owners.
+
+> **Educational Note:** This project is developed as part of an academic assignment for the Game Design and Development course. All Pokemon-related assets and references are used solely for educational purposes and are not licensed under the MIT License.
+
+---
+
+## External Links & References
+
+- **GitHub Repository:** [https://github.com/Amphoreous/Pinball](https://github.com/Amphoreous/Pinball)
+- **Development Template:** [raylib-box2d-quickstart](https://github.com/TheUnrealZaka/raylib-box2d-quickstart)
+- **raylib Documentation:** [https://raylib.com/](https://raylib.com/)
+- **Box2D Documentation:** [https://box2d.org/documentation/](https://box2d.org/documentation/)
+---
+
+_For technical support or questions about the game, please open an issue on GitHub or contact the development team._

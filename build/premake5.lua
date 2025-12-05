@@ -38,56 +38,20 @@ function check_raylib()
     os.chdir("../")
 end
 
-function get_latest_box2d_version()
-    -- Attempt to get the latest version from GitHub API
-    -- If this fails due to network restrictions, fallback to known latest version
-    local latest_version = "3.1.1" -- Known latest version as fallback
-    
-    print("Attempting to fetch latest Box2D version...")
-    local result_str, response_code = http.get("https://api.github.com/repos/erincatto/box2d/releases/latest")
-    if response_code == 200 and result_str then
-        -- Parse JSON to extract tag_name
-        local tag_match = string.match(result_str, '"tag_name"%s*:%s*"v([^"]+)"')
-        if tag_match then
-            latest_version = tag_match
-            print("Latest Box2D version found: " .. latest_version)
-        else
-            print("Could not parse version from API response, using fallback: " .. latest_version)
-        end
-    else
-        print("Could not fetch latest version from GitHub API (response code: " .. tostring(response_code) .. "), using fallback: " .. latest_version)
-    end
-    
-    return latest_version
-end
-
 function check_box2d()
     os.chdir("external")
-    
-    -- Get the latest version dynamically
-    local box2d_version = get_latest_box2d_version()
-    local box2d_folder = "box2d-" .. box2d_version
-    local box2d_zip = box2d_folder .. ".zip"
-    
-    if(os.isdir(box2d_folder) == false) then
-        if(not os.isfile(box2d_zip)) then
-            print("Box2D v" .. box2d_version .. " not found, downloading from github")
-            local download_url = "https://github.com/erincatto/box2d/archive/refs/tags/v" .. box2d_version .. ".zip"
-            local result_str, response_code = http.download(download_url, box2d_zip, {
+    if(os.isdir("box2d-2.4.2") == false) then
+        if(not os.isfile("box2d-2.4.2.zip")) then
+            print("Box2D not found, downloading from github")
+            local result_str, response_code = http.download("https://github.com/erincatto/box2d/archive/refs/tags/v2.4.2.zip", "box2d-2.4.2.zip", {
                 progress = download_progress,
                 headers = { "From: Premake", "Referer: Premake" }
             })
         end
         print("Unzipping to " ..  os.getcwd())
-        zip.extract(box2d_zip, os.getcwd())
-        os.remove(box2d_zip)
-    else
-        print("Box2D v" .. box2d_version .. " already exists")
+        zip.extract("box2d-2.4.2.zip", os.getcwd())
+        os.remove("box2d-2.4.2.zip")
     end
-    
-    -- Update the global box2d_dir variable to point to the correct version
-    box2d_dir = "external/" .. box2d_folder
-    
     os.chdir("../")
 end
 
@@ -148,7 +112,7 @@ raylib_dir = "external/raylib-master"
 
 -- if you don't want to download box2d, then set this to false, and set the box2d dir to where you want box2d to be pulled from, must be full sources.
 downloadBox2D = true
-box2d_dir = "external/box2d-3.1.1"  -- This will be updated dynamically by check_box2d()
+box2d_dir = "external/box2d-2.4.2"
 
 workspaceName = 'MyGame'
 baseName = path.getbasename(path.getdirectory(os.getcwd()));
@@ -313,34 +277,22 @@ if (downloadBox2D) then
         
         location "build_files/"
         
-        language "C"
+        language "C++"
         targetdir "../bin/%{cfg.buildcfg}"
-        
-        -- Use C11 standard for static_assert support
-        cdialect "C11"
         
         filter "action:vs*"
             defines{"_WINSOCK_DEPRECATED_NO_WARNINGS", "_CRT_SECURE_NO_WARNINGS"}
             characterset ("Unicode")
-            -- MSVC compatibility: Force C compilation
-            buildoptions { "/TC" }
-            -- For MSVC, define _Static_assert as a no-op since MSVC doesn't fully support C11
-            defines { "_Static_assert(x,y)=" }
-        
-        filter "system:not windows"
-            -- For non-Windows systems, ensure C11 support and define required macros
-            buildoptions { "-std=c11" }
-            defines { "_GNU_SOURCE", "_POSIX_C_SOURCE=200809L" }
-        
+            buildoptions { "/Zc:__cplusplus" }
         filter{}
         
-        includedirs {box2d_dir, box2d_dir .. "/include", box2d_dir .. "/src", box2d_dir .. "/extern/simde" }
+        includedirs {box2d_dir, box2d_dir .. "/include", box2d_dir .. "/src" }
         vpaths
         {
             ["Header Files"] = { box2d_dir .. "/include/**.h", box2d_dir .. "/src/**.h"},
-            ["Source Files/*"] = { box2d_dir .. "/src/**.c"},
+            ["Source Files/*"] = { box2d_dir .. "/src/**.cpp"},
         }
-        files {box2d_dir .. "/include/**.h", box2d_dir .. "/src/**.c", box2d_dir .. "/src/**.h"}
+        files {box2d_dir .. "/include/**.h", box2d_dir .. "/src/**.cpp", box2d_dir .. "/src/**.h"}
         
         filter{}
 end
