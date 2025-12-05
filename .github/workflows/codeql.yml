@@ -44,7 +44,7 @@ jobs:
     - name: Build project
       run: |
         ./build-VisualStudio2022.bat
-        msbuild Pinball.sln /p:Configuration=Release /p:Platform=x64
+        msbuild Racing.sln /p:Configuration=Release /p:Platform=x64
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
