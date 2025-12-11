@@ -1,242 +1,155 @@
-# Amphoreous Physics II Project: Pinball
+# Amphoreous — Racing
 
-![Pinball Logo](https://raw.githubusercontent.com/Amphoreous/Pinball/main/assets/ui/pinball_logo.png)
+A lightweight 2D arcade racing project built with Raylib and Box2D. Amphoreous/Racing focuses on simple, responsive driving mechanics, deterministic physics, modular architecture, and easy-to-author tracks using Tiled.
 
-**Pinball** is a physics-based pinball simulation that recreates the excitement and challenge of the classic game. Experience realistic ball physics, responsive flipper controls, and engaging combo systems in this tribute to one of gaming's most beloved pinball experiences.
+Quick highlights
+- Physics-driven car handling (Box2D via project physics wrappers)
+- Tiled map support (chain/polyline boundaries)
+- Player and AI opponents (waypoint system)
+- Debug tools (F1: physics visualization, mouse joint dragging)
+- Simple UI (lap timer, speedometer, menus)
+- Audio support (background music and SFX)
 
 ---
 
-## Table of Contents
-
-- [Team Members](#team-members)
-- [Features](#features)
-- [Installation](#installation)
+## Table of contents
+- [Team](#team)
+- [Goals & Features](#goals--features)
+- [Getting started](#getting-started)
 - [Controls](#controls)
-- [Gameplay](#gameplay)
-- [Technical Implementation](#technical-implementation)
-- [Development Stats](#development-stats)
-- [Grading Requirements](#grading-requirements)
+- [Project structure](#project-structure)
+- [Technical notes](#technical-notes)
+- [Development stats](#development-stats)
 - [Contributing](#contributing)
-- [Credits](#credits)
-- [License](#license)
-- [External Links & References](#external-links--references)
+- [Credits & License](#credits--license)
+- [Contact](#contact)
 
 ---
 
-## Team Members
+## Team
+This project is currently maintained by a core team of three contributors:
 
-- **Zakaria Hamdaoui** ([TheUnrealZaka](https://github.com/TheUnrealZaka)) - Project Lead & Infrastructure
-- **Sofia Giner Vargas** ([Katy-9](https://github.com/Katy-9)) - Art Lead & Visual Design
-- **Joel Martínez Arjona** ([Jowey7](https://github.com/Jowey7)) - Physics Lead & Box2D Integration
-- **Marc Pladellorens Pérez** ([MarcPladellorensPerez](https://github.com/MarcPladellorensPerez)) - Gameplay Lead & Systems Design
-- **Montserrat Medina Chávez** ([montse4](https://github.com/montse4)) - Audio Lead & Polish
-
----
-
-## Features
-
-- **Realistic Pinball Physics:** Powered by Box2D engine for authentic ball movement and collisions
-- **Responsive Controls:** Precision flipper control with left/right arrow keys
-- **Comprehensive Scoring:** Current, previous, and highest score tracking with persistent storage
-- **Ball Management System:** 3 balls per round with automatic cycling through multiple rounds
-- **Complete Audio Experience:** Sound effects for hits, bonuses, and background music
-- **Debug Visualization:** F1 toggle for physics shape visualization and mouse joint debugging
-- **Real-Time Performance:** Stable 60 FPS gameplay with optimized physics simulation
+- Zakaria Hamdaoui — Project Lead & Infrastructure (@TheUnrealZaka)
+- Sofia Giner Vargas — Art & Visuals (@Katy-9)
+- Joel Martínez Arjona — Physics & Box2D Integration (@Jowey7)
 
 ---
 
-## Installation
+## Goals & Features
+This repository implements a compact 2D racing experience with emphasis on:
+- Accurate and stable physics integration using Box2D (through project-specific wrappers).
+- Clean separation of concerns: Resource management, Physics wrappers, Game logic, Rendering, and UI.
+- Track authoring via Tiled with chain/loop collision conversion (pixels → meters).
+- Tunable car mechanics: acceleration, steering, drifting (lateral impulse), max speed clamps.
+- AI that follows waypoints placed in maps (simple opponent logic with rubber-banding).
+- Debugging tools for rapid iteration (physics draw, mouse joint dragging).
+- Simple HUD with lap timer and speedometer; main menu and victory screens.
+- Audio system using a Resource Manager to load/unload SFX and music safely.
 
-### Prerequisites
+---
 
-- **Operating Systems:** Windows 10/11
-- **Hardware:** Minimum 1GB RAM, DirectX 9 compatible graphics card
-- **Dependencies:** All required libraries (raylib, Box2D) are included in the release package
+## Getting started
 
-### Steps
+Prerequisites
+- C++ toolchain (Visual Studio 2022 on Windows, or GCC/Clang on Linux)
+- premake5 (optional if using the provided build configuration)
+- raylib (linked or installed)
+- Box2D (linked or installed)
 
-1. **Download the Game:** Visit the [official releases page](https://github.com/Amphoreous/Pinball/releases) to get the latest version
-2. **Extract Files:** Unzip the downloaded `GinerSofia_HamdaouiZakaria_MartinezJoel_MedinaMontserrat_PladellorensMarc_v1.0.zip` file
-3. **Run the Game:**  
-   - Double-click `Pinball.exe`
+Basic build steps (typical)
+1. git clone https://github.com/Amphoreous/Racing.git
+2. Install or make available raylib and Box2D for your platform.
+3. Use premake5 (if included) to generate the appropriate solution/Makefile:
+   - Windows (Visual Studio): premake5 vs2022
+   - Linux/macOS: premake5 gmake2 && make -C build
+4. Open the generated solution or run make to compile.
+5. Run the produced executable from the `bin/` directory.
 
-*Ensure all files remain in the same directory as the executable for proper asset loading.*
+Notes
+- The project aims to keep dependencies minimal. If runtime issues occur, ensure raylib and Box2D are compatible with your platform and build mode (Debug/Release).
+- Asset paths are relative to the executable; keep the assets folder next to the binary.
 
 ---
 
 ## Controls
 
-### Gameplay Controls
-- **Left Arrow Key:** Control left flipper
-- **Right Arrow Key:** Control right flipper
-- **Down Arrow Key:** Control kicker (launch ball)
-- **P Key:** Pause/Unpause game
-- **Space Key:** Start new game (from menu)
+Gameplay
+- Accelerate: W / Up arrow
+- Brake / Reverse: S / Down arrow
+- Steer left/right: A / Left arrow, D / Right arrow
+- Pause: P
+- Restart / Confirm: Space / Enter
+- Escape: Back / Open menu
 
-### Debug Controls
-- **F1 Key:** Toggle debug mode (shows physics shapes and collision boundaries)
-- **Mouse:** Drag physics objects when in debug mode (mouse joint functionality)
+Debug
+- Toggle debug draw: F1
+- Drag physics bodies with mouse while in debug mode
 
-### Menu Navigation
-- **Arrow Keys:** Navigate menus
-- **Enter:** Select menu option
-- **Escape:** Return to previous menu or pause game
-
----
-
-## Gameplay
-
-Experience authentic pinball action with modern physics simulation:
-
-### Game Flow
-- **Main Menu:** Start new game, view high scores, or access settings
-- **Ball Launch:** Use DOWN arrow to launch ball from kicker
-- **Flipper Control:** Use LEFT/RIGHT arrows for precise ball control
-- **Scoring System:** Earn points through various targets and bumpers
-- **Round Progression:** Complete rounds with 3 balls each, advance through multiple rounds
-
-### Scoring System
-- **Flipper Hits:** 10 points
-- **Bumper Collisions:** 50 points
-- **Target Hits:** 100 points
-
-### Special Features
-- **Extra Ball:** Earned through combo completion or high scores
-- **High Score Persistence:** Your best scores are saved between sessions
-- **Debug Mode:** F1 reveals physics boundaries for educational purposes
+Menu navigation
+- Use arrow keys or WASD to navigate UI and Enter to select.
 
 ---
 
-## Technical Implementation
+## Project structure
 
-### Core Technologies
-- **Graphics & Audio:** [raylib](https://raylib.com/) - Simple and easy-to-use library
-- **Physics Engine:** [Box2D](https://box2d.org/) - Industry-standard 2D physics simulation
-- **Build System:** [premake5](https://premake.github.io/) - Cross-platform build configuration
-- **Development Environment:** Visual Studio 2022, VSCode with C/C++ extensions
+A high-level view of the repository:
 
-### Architecture
 ```
-Pinball/
-├── src/           # C++ source files (main.cpp, physics.cpp, game.cpp, audio.cpp)
-├── include/       # Header files (game.h, physics.h, audio.h, resource_dir.h)
-├── assets/        # Game assets (sprites, audio, ui)
-├── build/         # Build configuration (premake5.lua)
-└── bin/           # Compiled executables
+Amphoreous/Racing/
+├── src/           # C++ source (game loop, modules, wrappers)
+├── include/       # Public headers
+├── assets/        # Sprites, Tiled maps, audio
+├── scripts/       # Helper build / automation scripts
+├── build/         # Generated build files (premake, makefiles)
+└── bin/           # Compiled binaries / runtime output
 ```
 
-### Performance Features
-- **Fixed timestep physics** for consistent simulation
-- **Efficient collision detection** using Box2D spatial partitioning  
-- **Optimized rendering pipeline** with raylib
-- **Memory management** with automatic cleanup and leak prevention
+Module responsibilities (convention)
+- ModuleResources / Resource Manager — centralized loading/unloading of textures, audio, maps.
+- ModulePhysics — Box2D world and wrappers (PhysBody, helper functions).
+- Entities — PlayerCar, AICar, Track objects — each entity owns update/draw hooks.
+- UI — HUD, menus, overlays.
+- MapLoader — Tiled parsing and chain generation for static level boundaries.
 
 ---
 
-## Development Stats
+## Technical notes & best practices
 
-- **Development Period:** 32 days (September 28 - October 30, 2025)
-- **Total GitHub Issues:** 38 comprehensive issues completed
-- **Team Members:** 5 specialized roles with clear responsibilities
-- **Code Base:** C++ language with raylib and Box2D integration
-- **Build Configurations:** Debug and Release modes with cross-platform support
-- **Testing Platforms:** Windows (Visual Studio)
-
-### Development Template
-This project was built using the [raylib-box2d-quickstart](https://github.com/TheUnrealZaka/raylib-box2d-quickstart) template by @TheUnrealZaka, providing a solid foundation for raylib and Box2D integration.
-
+- Physics: Fixed timestep simulation to keep deterministic behavior across frame rates.
+- Units: Store physics in meters; convert pixels ↔ meters at object creation (`PIXEL_TO_METERS`).
+- Rendering: Use raylib DrawTexturePro and convert Box2D radians → degrees for sprite rotation.
+- Audio: Load via Resource Manager to prevent leaks. Test .ogg and .wav decoding on your platform.
+- Debugging: Provide clear logging around module initialization and asset loading failures to troubleshoot runtime errors.
+- 
 ---
 
-## Grading Requirements
-
-### ✅ Mandatory Requirements Met
-
-**Core Functionality:**
-- ✅ **No crashes** during extended gameplay (tested 30+ minutes)
-- ✅ **Flipper controls** respond immediately to left/right arrow keys
-- ✅ **Kicker control** responds to down arrow key for ball launching
-- ✅ **Clear game begin/end** states with proper transitions
-
-**Scoring & Gameplay:**
-- ✅ **Current score** updates live during gameplay
-- ✅ **Previous score** displayed after each round ends
-- ✅ **Highest score** persists between game sessions
-- ✅ **Specific ball count** per round (3 balls) with automatic cycling
-- ✅ **At least one combo system** (POKEMON letter collection for bonuses)
-
-**Technical Features:**
-- ✅ **F1 debug mode** shows all physics shapes and collision boundaries
-- ✅ **Mouse joint functionality** allows dragging objects in debug mode
-- ✅ **Real-time performance** maintains stable 60 FPS without bullet-time
-- ✅ **Audio effects** for hits, bonuses, and combo completions
-- ✅ **Memory leak free** verified with testing tools
-
-**Documentation:**
-- ✅ **All team member names** listed in README and release
-- ✅ **GitHub repository link** included in all documentation
-- ✅ **Complete control instructions** documented
-- ✅ **Differences from original** clearly explained
+## Development stats
+- Active issues: 25 open issues related to architecture, physics, gameplay, AI, UI, audio, and release tasks — check the repository Issues tab for details.
+- Key development areas: Architecture (wrappers & resource manager), Gameplay & Physics, Map loading, AI, UI, Audio, and Release packaging.
 
 ---
 
 ## Contributing
+We welcome contributions. Typical workflow:
+1. Fork the repository and create a topic branch: git checkout -b feature/your-feature
+2. Keep commits small and well-scoped. Include tests where practical.
+3. Ensure no memory leaks and adhere to the project's coding conventions.
+4. Open a pull request describing the change and link related issues.
 
-We welcome contributions to enhance the Pokemon Pinball Clone. Follow these steps to get involved:
-
-1. **Fork the Repository**
-2. **Create a Feature Branch:**
-   ```bash
-   git checkout -b feature/YourFeatureName
-   ```
-3. **Commit Your Changes:**
-   ```bash
-   git commit -m "Add YourFeatureName"
-   ```
-4. **Push to Your Branch:**
-   ```bash
-   git push origin feature/YourFeatureName
-   ```
-5. **Submit a Pull Request**  
-   Please include documentation and tests for your changes.
-
-### Development Guidelines
-- Follow C++ coding standards and consistent formatting
-- Test on multiple platforms before submitting
-- Ensure no memory leaks with Valgrind or similar tools
-- Update documentation for any new features
-- Maintain 60 FPS performance standards
+Before contributing:
+- Run the game locally and ensure your change does not break the build in Debug and Release mode.
+- Follow code formatting and document public APIs.
 
 ---
 
-## Credits
+## Credits & License
+Core libraries:
+- raylib — graphics and audio
+- Box2D — 2D physics engine
 
-### Development Team
-- **Zakaria Hamdaoui** - Project architecture, build system, CI/CD, debug features
-- **Sofia Giner Vargas** - Visual design, sprite creation, UI elements, asset management
-- **Joel Martínez Arjona** - Box2D integration, physics tuning, performance optimization
-- **Marc Pladellorens Pérez** - Game logic, scoring system, combo mechanics, state management  
-- **Montserrat Medina Chávez** - Audio system, sound effects, music integration, final polish
-
-### Special Thanks
-- **Template Foundation:** @TheUnrealZaka's raylib-box2d-quickstart
-- **Libraries:** raylib community, Box2D developers
-- **Educational Support:** Game Design and Development course instructors and peers
----
-
-## License
-
-This project's **source code** is licensed under the MIT License. All game assets (sprites, audio, visual elements) are used for educational purposes only and remain the property of their respective owners.
-
-> **Educational Note:** This project is developed as part of an academic assignment for the Game Design and Development course. All Pokemon-related assets and references are used solely for educational purposes and are not licensed under the MIT License.
+This project is provided under the MIT License. See the LICENSE file for details.
 
 ---
 
-## External Links & References
-
-- **GitHub Repository:** [https://github.com/Amphoreous/Pinball](https://github.com/Amphoreous/Pinball)
-- **Development Template:** [raylib-box2d-quickstart](https://github.com/TheUnrealZaka/raylib-box2d-quickstart)
-- **raylib Documentation:** [https://raylib.com/](https://raylib.com/)
-- **Box2D Documentation:** [https://box2d.org/documentation/](https://box2d.org/documentation/)
----
-
-_For technical support or questions about the game, please open an issue on GitHub or contact the development team._
+## Contact
+For issues, feature requests, or support, open an issue in this repository: https://github.com/Amphoreous/Racing/issues
