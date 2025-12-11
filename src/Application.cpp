@@ -5,6 +5,7 @@
 #include "ModuleAudio.h"
 #include "ModulePhysics.h"
 #include "ModuleGame.h"
+#include "ModuleResources.h"
 
 #include "Application.h"
 
@@ -14,14 +15,16 @@ Application::Application()
 	renderer = new ModuleRender(this);
 	audio = new ModuleAudio(this, true);
 	physics = new ModulePhysics(this);
+	resources = new ModuleResources(this, true);
 	scene_intro = new ModuleGame(this);
 
 	// The order of calls is very important!
 	// Modules will Init() Start() and Update in this order
 	// They will CleanUp() in reverse order
 
-	// Main Modules
+	// Main Modules - Resources must be initialized early
 	AddModule(window);
+	AddModule(resources);
 	AddModule(physics);
 	AddModule(audio);
 	

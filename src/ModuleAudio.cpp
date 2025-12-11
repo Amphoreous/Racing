@@ -1,6 +1,7 @@
 #include "Globals.h"
 #include "Application.h"
 #include "ModuleAudio.h"
+#include "ModuleResources.h"
 
 #include "raylib.h"
 
@@ -34,25 +35,16 @@ bool ModuleAudio::CleanUp()
 {
 	LOG("Freeing sound FX, closing Mixer and Audio subsystem");
 
-    // Unload sounds
-	for (unsigned int i = 0; i < fx_count; i++)
-	{
-		UnloadSound(fx[i]);
-	}
-
-    // Unload music
-	if (IsMusicValid(music))
-	{
-		StopMusicStream(music);
-		UnloadMusicStream(music);
-	}
+    // Resource cleanup is now handled by ModuleResources
+    // The resource manager will automatically unload all sounds and music
+    // when its CleanUp() method is called (in reverse order of initialization)
 
     CloseAudioDevice();
 
 	return true;
 }
 
-// Play a music file
+// Play a music file - now uses the resource manager
 bool ModuleAudio::PlayMusic(const char* path, float fade_time)
 {
 	if(IsEnabled() == false)
@@ -60,8 +52,20 @@ bool ModuleAudio::PlayMusic(const char* path, float fade_time)
 
 	bool ret = true;
 	
-    StopMusicStream(music);
-    music = LoadMusicStream(path);
+    // Stop current music if playing
+	if (IsMusicValid(music))
+	{
+		StopMusicStream(music);
+	}
+
+	// Load music through resource manager
+	music = App->resources->LoadMusic(path);
+	
+	if (!IsMusicValid(music))
+	{
+		LOG("ERROR: Could not load music: %s", path);
+		return false;
+	}
     
     PlayMusicStream(music);
 
@@ -70,7 +74,7 @@ bool ModuleAudio::PlayMusic(const char* path, float fade_time)
 	return ret;
 }
 
-// Load WAV
+// Load WAV - now uses the resource manager
 unsigned int ModuleAudio::LoadFx(const char* path)
 {
 	if(IsEnabled() == false)
@@ -78,7 +82,8 @@ unsigned int ModuleAudio::LoadFx(const char* path)
 
 	unsigned int ret = 0;
 
-	Sound sound = LoadSound(path);
+	// Load sound through resource manager
+	Sound sound = App->resources->LoadSound(path);
 
 	if(sound.stream.buffer == NULL)
 	{

@@ -4,6 +4,9 @@
 
 #include <limits.h>
 
+// ModuleRender: Handles all drawing operations
+// NOTE: All textures should be loaded via ModuleResources (App->resources->LoadTexture())
+// This module only handles drawing, NOT resource management
 class ModuleRender : public Module
 {
 public:
