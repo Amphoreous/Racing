@@ -78,7 +78,7 @@ void ModulePlayer::HandleInput()
 	// Reverse (changed from Brake to Reverse!)
 	else if (IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN))
 	{
-		playerCar->Reverse(1.0f);  // FIXED: Changed from Brake() to Reverse()
+		playerCar->Reverse(1.0f);
 	}
 
 	// Steering
