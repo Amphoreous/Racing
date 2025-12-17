@@ -3,6 +3,8 @@
 #include "Globals.h"
 #include "p2Point.h"
 
+class Car;
+
 class ModulePlayer : public Module
 {
 public:
@@ -13,6 +15,11 @@ public:
 	update_status Update();
 	bool CleanUp();
 
-public:
+	// Access to player car
+	Car* GetCar() const { return playerCar; }
 
+private:
+	Car* playerCar;
+
+	void HandleInput();
 };

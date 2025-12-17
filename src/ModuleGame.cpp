@@ -8,11 +8,11 @@
 
 ModuleGame::ModuleGame(Application* app, bool start_enabled) : Module(app, start_enabled)
 {
-	
 }
 
 ModuleGame::~ModuleGame()
-{}
+{
+}
 
 // Load assets
 bool ModuleGame::Start()
@@ -25,6 +25,9 @@ bool ModuleGame::Start()
 
 	// Print resource statistics after loading
 	PrintResourceStatistics();
+
+	// TODO: Load track, obstacles, AI opponents, etc.
+	// Player is handled by ModulePlayer
 
 	return ret;
 }
@@ -95,6 +98,9 @@ update_status ModuleGame::Update()
 {
 	// Render all game elements
 	RenderGameElements();
+
+	// TODO: Update track, obstacles, AI opponents, etc.
+	// Player car is updated in ModulePlayer
 
 	return UPDATE_CONTINUE;
 }
