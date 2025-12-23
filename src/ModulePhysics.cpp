@@ -3,6 +3,10 @@
 #include "ModuleRender.h"
 #include "ModulePhysics.h"
 #include "PhysBody.h"
+#include "Player.h"
+#include "Car.h"
+#include "Entity.h"
+#include "Player.h"
 
 #include "box2d/box2d.h"
 #include "raylib.h"
@@ -516,96 +520,146 @@ int ModulePhysics::QueryArea(float minX, float minY, float maxX, float maxY, std
 // ===== DEBUG RENDERING =====
 void ModulePhysics::DebugDraw()
 {
-	if (!world) return;
-	
-	// Iterate all bodies in the world and draw them
-	for (b2Body* b = world->GetBodyList(); b; b = b->GetNext())
-	{
-		for (b2Fixture* f = b->GetFixtureList(); f; f = f->GetNext())
-		{
-			switch (f->GetType())
-			{
-				// Draw circles
-				case b2Shape::e_circle:
-				{
-					b2CircleShape* shape = (b2CircleShape*)f->GetShape();
-					b2Vec2 pos = b->GetPosition();
-					
-					float px = pos.x * METERS_TO_PIXELS;
-					float py = pos.y * METERS_TO_PIXELS;
-					float radius = shape->m_radius * METERS_TO_PIXELS;
-					
-					DrawCircleLines((int)px, (int)py, radius, GREEN);
-				}
-				break;
+#ifndef NDEBUG // Only include debug draw in debug builds
+       if (!world) return;
 
-				// Draw polygons
-				case b2Shape::e_polygon:
-				{
-					b2PolygonShape* polygonShape = (b2PolygonShape*)f->GetShape();
-					int32 count = polygonShape->m_count;
-					b2Vec2 prev, v;
+       // --- Debug Info Overlay ---
 
-					for (int32 i = 0; i < count; ++i)
-					{
-						v = b->GetWorldPoint(polygonShape->m_vertices[i]);
-						if (i > 0)
-						{
-							float x1 = prev.x * METERS_TO_PIXELS;
-							float y1 = prev.y * METERS_TO_PIXELS;
-							float x2 = v.x * METERS_TO_PIXELS;
-							float y2 = v.y * METERS_TO_PIXELS;
-							DrawLine((int)x1, (int)y1, (int)x2, (int)y2, RED);
-						}
-						prev = v;
-					}
+	   int overlayX = 10, overlayY = 10, overlayW = 370, overlayH = 160;
+	   // Use solid black background for readability
+	   DrawRectangle(overlayX, overlayY, overlayW, overlayH, BLACK);
+	   DrawRectangleLines(overlayX, overlayY, overlayW, overlayH, YELLOW);
 
-					v = b->GetWorldPoint(polygonShape->m_vertices[0]);
-					float x1 = prev.x * METERS_TO_PIXELS;
-					float y1 = prev.y * METERS_TO_PIXELS;
-					float x2 = v.x * METERS_TO_PIXELS;
-					float y2 = v.y * METERS_TO_PIXELS;
-					DrawLine((int)x1, (int)y1, (int)x2, (int)y2, RED);
-				}
-				break;
+	   // FPS
+	   int fps = GetFPS();
+	   DrawText(TextFormat("FPS: %d", fps), overlayX + 10, overlayY + 10, 22, WHITE);
 
-				// Draw chains
-				case b2Shape::e_chain:
-				{
-					b2ChainShape* shape = (b2ChainShape*)f->GetShape();
-					b2Vec2 prev, v;
+	   // Body count
+	   int bodyCount = 0;
+	   for (b2Body* b = world->GetBodyList(); b; b = b->GetNext()) ++bodyCount;
+	   DrawText(TextFormat("Bodies: %d", bodyCount), overlayX + 120, overlayY + 10, 22, WHITE);
 
-					for (int32 i = 0; i < shape->m_count; ++i)
-					{
-						v = b->GetWorldPoint(shape->m_vertices[i]);
-						if (i > 0)
-						{
-							float x1 = prev.x * METERS_TO_PIXELS;
-							float y1 = prev.y * METERS_TO_PIXELS;
-							float x2 = v.x * METERS_TO_PIXELS;
-							float y2 = v.y * METERS_TO_PIXELS;
-							DrawLine((int)x1, (int)y1, (int)x2, (int)y2, GREEN);
-						}
-						prev = v;
-					}
-				}
-				break;
+	   // Mouse position
+	   Vector2 mouse = GetMousePosition();
+	   DrawText(TextFormat("Mouse: (%.0f, %.0f)", mouse.x, mouse.y), overlayX + 10, overlayY + 40, 20, WHITE);
 
-				// Draw edge shapes
-				case b2Shape::e_edge:
-				{
-					b2EdgeShape* shape = (b2EdgeShape*)f->GetShape();
-					b2Vec2 v1 = b->GetWorldPoint(shape->m_vertex1);
-					b2Vec2 v2 = b->GetWorldPoint(shape->m_vertex2);
-					
-					float x1 = v1.x * METERS_TO_PIXELS;
-					float y1 = v1.y * METERS_TO_PIXELS;
-					float x2 = v2.x * METERS_TO_PIXELS;
-					float y2 = v2.y * METERS_TO_PIXELS;
-					DrawLine((int)x1, (int)y1, (int)x2, (int)y2, BLUE);
-				}
-				break;
-			}
-		}
-	}
+	   // Gravity info
+	   b2Vec2 gravity = world->GetGravity();
+	   DrawText(TextFormat("Gravity: (%.2f, %.2f)", gravity.x, gravity.y), overlayX + 10, overlayY + 65, 20, WHITE);
+
+	   // Step info
+	   DrawText(TextFormat("Step: dt=1/60, VelIters=%d, PosIters=%d", VELOCITY_ITERATIONS, POSITION_ITERATIONS), overlayX + 10, overlayY + 90, 18, WHITE);
+
+	   // World size
+	   DrawText(TextFormat("World: %dx%d px", SCREEN_WIDTH, SCREEN_HEIGHT), overlayX + 10, overlayY + 110, 18, WHITE);
+
+	   // Player vehicle position (if available)
+	   float carX = 0, carY = 0;
+	   bool hasCar = false;
+	   if (App && App->player && App->player->GetCar()) {
+		   App->player->GetCar()->GetPosition(carX, carY);
+		   hasCar = true;
+	   }
+	   if (hasCar) {
+		   DrawText(TextFormat("Car Pos: (%.1f, %.1f)", carX, carY), overlayX + 10, overlayY + 130, 20, YELLOW);
+	   } else {
+		   DrawText("Car Pos: (N/A)", overlayX + 10, overlayY + 130, 20, GRAY);
+	   }
+
+       // --- Draw all bodies ---
+       for (b2Body* b = world->GetBodyList(); b; b = b->GetNext())
+       {
+	       // Color code by body type
+	       Color color = GRAY;
+	       switch (b->GetType()) {
+		       case b2_staticBody: color = BLUE; break;
+		       case b2_kinematicBody: color = ORANGE; break;
+		       case b2_dynamicBody: color = GREEN; break;
+		       default: color = GRAY; break;
+	       }
+	       for (b2Fixture* f = b->GetFixtureList(); f; f = f->GetNext())
+	       {
+		       switch (f->GetType())
+		       {
+			       // Draw circles
+			       case b2Shape::e_circle:
+			       {
+				       b2CircleShape* shape = (b2CircleShape*)f->GetShape();
+				       b2Vec2 pos = b->GetPosition();
+				       float px = pos.x * METERS_TO_PIXELS;
+				       float py = pos.y * METERS_TO_PIXELS;
+				       float radius = shape->m_radius * METERS_TO_PIXELS;
+				       DrawCircleLines((int)px, (int)py, radius, color);
+				       // Draw position cross
+				       DrawLine((int)px-5, (int)py, (int)px+5, (int)py, YELLOW);
+				       DrawLine((int)px, (int)py-5, (int)px, (int)py+5, YELLOW);
+			       }
+			       break;
+
+			       // Draw polygons
+			       case b2Shape::e_polygon:
+			       {
+				       b2PolygonShape* polygonShape = (b2PolygonShape*)f->GetShape();
+				       int32 count = polygonShape->m_count;
+				       b2Vec2 prev, v;
+				       for (int32 i = 0; i < count; ++i)
+				       {
+					       v = b->GetWorldPoint(polygonShape->m_vertices[i]);
+					       if (i > 0)
+					       {
+						       float x1 = prev.x * METERS_TO_PIXELS;
+						       float y1 = prev.y * METERS_TO_PIXELS;
+						       float x2 = v.x * METERS_TO_PIXELS;
+						       float y2 = v.y * METERS_TO_PIXELS;
+						       DrawLine((int)x1, (int)y1, (int)x2, (int)y2, color);
+					       }
+					       prev = v;
+				       }
+				       v = b->GetWorldPoint(polygonShape->m_vertices[0]);
+				       float x1 = prev.x * METERS_TO_PIXELS;
+				       float y1 = prev.y * METERS_TO_PIXELS;
+				       float x2 = v.x * METERS_TO_PIXELS;
+				       float y2 = v.y * METERS_TO_PIXELS;
+				       DrawLine((int)x1, (int)y1, (int)x2, (int)y2, color);
+			       }
+			       break;
+
+			       // Draw chains
+			       case b2Shape::e_chain:
+			       {
+				       b2ChainShape* shape = (b2ChainShape*)f->GetShape();
+				       b2Vec2 prev, v;
+				       for (int32 i = 0; i < shape->m_count; ++i)
+				       {
+					       v = b->GetWorldPoint(shape->m_vertices[i]);
+					       if (i > 0)
+					       {
+						       float x1 = prev.x * METERS_TO_PIXELS;
+						       float y1 = prev.y * METERS_TO_PIXELS;
+						       float x2 = v.x * METERS_TO_PIXELS;
+						       float y2 = v.y * METERS_TO_PIXELS;
+						       DrawLine((int)x1, (int)y1, (int)x2, (int)y2, color);
+					       }
+					       prev = v;
+				       }
+			       }
+			       break;
+
+			       // Draw edge shapes
+			       case b2Shape::e_edge:
+			       {
+				       b2EdgeShape* shape = (b2EdgeShape*)f->GetShape();
+				       b2Vec2 v1 = b->GetWorldPoint(shape->m_vertex1);
+				       b2Vec2 v2 = b->GetWorldPoint(shape->m_vertex2);
+				       float x1 = v1.x * METERS_TO_PIXELS;
+				       float y1 = v1.y * METERS_TO_PIXELS;
+				       float x2 = v2.x * METERS_TO_PIXELS;
+				       float y2 = v2.y * METERS_TO_PIXELS;
+				       DrawLine((int)x1, (int)y1, (int)x2, (int)y2, color);
+			       }
+			       break;
+		       }
+	       }
+       }
+#endif // NDEBUG
 }
