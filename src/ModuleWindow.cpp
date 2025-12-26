@@ -6,15 +6,13 @@ ModuleWindow::ModuleWindow(Application* app, bool start_enabled) : Module(app, s
 {
 }
 
-// Destructor
 ModuleWindow::~ModuleWindow()
 {
 }
 
-// Called before render is available
 bool ModuleWindow::Init()
 {
-	LOG("Init window");
+	LOG("Setting up window");
 	bool ret = true;
 
 	unsigned int flags = 0;
@@ -63,10 +61,9 @@ update_status ModuleWindow::PostUpdate()
 	return UPDATE_CONTINUE;
 }
 
-// Called before quitting
 bool ModuleWindow::CleanUp()
 {
-	LOG("Close window");
+	LOG("Closing window");
 
     CloseWindow();
 

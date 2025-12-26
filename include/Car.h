@@ -58,6 +58,7 @@ private:
 	// Helper methods
 	void ApplyFriction();
 	void ClampSpeed();
+	void ApplyDownforce();
 	vec2f GetForwardVector() const;
 	vec2f GetRightVector() const;
 };

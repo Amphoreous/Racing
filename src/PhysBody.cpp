@@ -18,7 +18,7 @@ PhysBody::~PhysBody()
 	// We just clean up our wrapper
 }
 
-// === POSITION AND ROTATION ===
+// Position and rotation getters/setters
 void PhysBody::GetPosition(int& x, int& y) const
 {
 	if (!body) return;

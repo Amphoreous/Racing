@@ -35,7 +35,7 @@ std::string ModuleResources::NormalizePath(const char* path) const
 	return normalized;
 }
 
-// ===== TEXTURE MANAGEMENT =====
+// Texture loading and management
 Texture2D ModuleResources::LoadTexture(const char* path)
 {
 	if (path == nullptr)
@@ -129,7 +129,7 @@ int ModuleResources::GetTextureCount() const
 	return (int)textures.size();
 }
 
-// ===== SOUND MANAGEMENT =====
+// Sound loading and management
 Sound ModuleResources::LoadSound(const char* path)
 {
 	if (path == nullptr)
@@ -223,7 +223,7 @@ int ModuleResources::GetSoundCount() const
 	return (int)sounds.size();
 }
 
-// ===== MUSIC MANAGEMENT =====
+// Music loading and management
 Music ModuleResources::LoadMusic(const char* path)
 {
 	if (path == nullptr)
@@ -313,7 +313,7 @@ int ModuleResources::GetMusicCount() const
 	return (int)musics.size();
 }
 
-// ===== BATCH UNLOAD =====
+// Batch resource unloading
 void ModuleResources::UnloadAll()
 {
 	UnloadAllTextures();
@@ -322,10 +322,10 @@ void ModuleResources::UnloadAll()
 	LOG("All resources unloaded");
 }
 
-// ===== DEBUG AND STATISTICS =====
+// Debug and statistics
 void ModuleResources::PrintResourceReport() const
 {
-	LOG("========== RESOURCE MANAGER REPORT ==========");
+	LOG("Resource manager report:");
 	LOG("Textures: %d loaded", GetTextureCount());
 	for (const auto& pair : textures)
 	{

@@ -13,38 +13,25 @@ ModuleAudio::ModuleAudio(Application* app, bool start_enabled) : Module(app, sta
 	music = Music{ 0 };
 }
 
-// Destructor
 ModuleAudio::~ModuleAudio()
 {}
 
-// Called before render is available
 bool ModuleAudio::Init()
 {
-	LOG("Loading Audio Mixer");
-	bool ret = true;
-
-    LOG("Loading raylib audio system");
-
+	LOG("Initializing audio system");
     InitAudioDevice();
-
-	return ret;
-}
-
-// Called before quitting
-bool ModuleAudio::CleanUp()
-{
-	LOG("Freeing sound FX, closing Mixer and Audio subsystem");
-
-    // Resource cleanup is now handled by ModuleResources
-    // The resource manager will automatically unload all sounds and music
-    // when its CleanUp() method is called (in reverse order of initialization)
-
-    CloseAudioDevice();
-
 	return true;
 }
 
-// Play a music file - now uses the resource manager
+bool ModuleAudio::CleanUp()
+{
+	LOG("Shutting down audio");
+    // Resources are cleaned up by ModuleResources automatically
+    CloseAudioDevice();
+	return true;
+}
+
+// Play music using the resource manager
 bool ModuleAudio::PlayMusic(const char* path, float fade_time)
 {
 	if(IsEnabled() == false)

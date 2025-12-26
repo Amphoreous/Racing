@@ -13,7 +13,7 @@ public:
 	PhysBody();
 	~PhysBody();
 
-	// === POSITION AND ROTATION ===
+	// Position and rotation
 	// Get position in pixels (not meters)
 	void GetPosition(int& x, int& y) const;
 	void GetPositionF(float& x, float& y) const;
@@ -27,7 +27,7 @@ public:
 	// Set rotation in degrees
 	void SetRotation(float degrees);
 
-	// === VELOCITY ===
+	// Velocity stuff
 	// Get linear velocity in pixels/second
 	void GetLinearVelocity(float& vx, float& vy) const;
 	
@@ -40,7 +40,7 @@ public:
 	// Set angular velocity in degrees/second
 	void SetAngularVelocity(float omega);
 
-	// === FORCES AND IMPULSES ===
+	// Forces and impulses
 	// Apply force at center of mass (in pixels)
 	void ApplyForce(float fx, float fy);
 	
@@ -59,7 +59,7 @@ public:
 	// Apply angular impulse (instant angular velocity change)
 	void ApplyAngularImpulse(float impulse);
 
-	// === BODY PROPERTIES ===
+	// Body properties
 	// Get/set body type (static, kinematic, dynamic)
 	enum class BodyType
 	{
@@ -83,7 +83,7 @@ public:
 	void SetGravityScale(float scale);
 	float GetGravityScale() const;
 
-	// === PHYSICAL PROPERTIES ===
+	// Physical properties
 	// Set density (affects mass)
 	void SetDensity(float density);
 	
@@ -99,7 +99,7 @@ public:
 	// Get inertia (rotational mass)
 	float GetInertia() const;
 
-	// === COLLISION PROPERTIES ===
+	// Collision properties
 	// Enable/disable collision detection
 	void SetSensor(bool isSensor);
 	bool IsSensor() const;
@@ -113,12 +113,12 @@ public:
 	// Set group index (positive = always collide, negative = never collide)
 	void SetGroupIndex(short group);
 
-	// === USER DATA ===
+	// User data
 	// Store custom game data pointer (e.g., pointer to game entity)
 	void SetUserData(void* data);
 	void* GetUserData() const;
 
-	// === COLLISION CALLBACKS ===
+	// Collision callbacks
 	// Collision listener interface - implement this in your game objects
 	class CollisionListener
 	{
@@ -132,8 +132,8 @@ public:
 	void SetCollisionListener(CollisionListener* listener);
 	CollisionListener* GetCollisionListener() const;
 
-	// === INTERNAL USE ONLY ===
-	// These are used internally by ModulePhysics - do NOT call from game code
+	// For internal use only - don't call from game code
+	// These are used internally by ModulePhysics
 	b2Body* GetB2Body() const { return body; }
 	void SetB2Body(b2Body* b) { body = b; }
 

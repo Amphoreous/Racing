@@ -25,7 +25,7 @@ public:
 	update_status PostUpdate();
 	bool CleanUp();
 
-	// ===== BODY CREATION =====
+	// Body creation functions
 	// Create a circular physics body
 	// Parameters:
 	//   x, y: position in pixels
@@ -63,7 +63,7 @@ public:
 	// WARNING: After calling this, the PhysBody pointer is invalid - set it to nullptr!
 	void DestroyBody(PhysBody* body);
 
-	// ===== WORLD PROPERTIES =====
+	// World properties
 	// Set world gravity (pixels/second^2)
 	void SetGravity(float gx, float gy);
 	
@@ -74,7 +74,7 @@ public:
 	void SetDebugMode(bool enabled);
 	bool IsDebugMode() const;
 
-	// ===== RAYCASTING =====
+	// Raycasting
 	// Cast a ray and get the first hit
 	// Parameters:
 	//   x1, y1: start point in pixels
@@ -92,14 +92,14 @@ public:
 	// Returns: number of bodies found
 	int QueryArea(float minX, float minY, float maxX, float maxY, std::vector<PhysBody*>& outBodies);
 
-	// ===== JOINTS (Advanced) =====
+	// Joints (advanced stuff)
 	// Create a distance joint (rope/spring connection between two bodies)
 	// Create a revolute joint (hinge/pin connection)
 	// Create a prismatic joint (slider connection)
 	// Note: Joint creation methods can be added as needed
 
-	// ===== INTERNAL USE ONLY =====
-	// DO NOT CALL from game code - these are for PhysBody wrapper only
+	// For internal use only - don't call from game code
+	// These are for PhysBody wrapper only
 	b2World* GetB2World() const { return world; }
 
 private:
@@ -112,8 +112,14 @@ private:
 	// Debug rendering
 	bool debugMode;
 	
+	// Mouse joint for debug dragging
+	class b2MouseJoint* mouseJoint;
+	PhysBody* draggedBody;
+	b2Body* groundBody;
+	
 	// Helper functions
 	void DebugDraw();
+	void HandleMouseJoint();
 	
 	// Contact listener for collision callbacks
 	class PhysicsContactListener;

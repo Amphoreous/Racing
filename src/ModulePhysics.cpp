@@ -9,6 +9,7 @@
 #include "Player.h"
 
 #include "box2d/box2d.h"
+#include "box2d/b2_mouse_joint.h"
 #include "raylib.h"
 #include <math.h>
 
@@ -54,6 +55,9 @@ ModulePhysics::ModulePhysics(Application* app, bool start_enabled) : Module(app,
 	world = nullptr;
 	contactListener = nullptr;
 	debugMode = true;
+	mouseJoint = nullptr;
+	draggedBody = nullptr;
+	groundBody = nullptr;
 }
 
 ModulePhysics::~ModulePhysics()
@@ -77,6 +81,12 @@ bool ModulePhysics::Start()
 	// Set up contact listener for collision callbacks
 	contactListener = new PhysicsContactListener();
 	world->SetContactListener(contactListener);
+	
+	// Create ground body for mouse joint
+	b2BodyDef groundBodyDef;
+	groundBodyDef.type = b2_staticBody;
+	groundBodyDef.position.Set(0.0f, 0.0f);
+	groundBody = world->CreateBody(&groundBodyDef);
 	
 	LOG("Physics world created successfully");
 	return true;
@@ -105,9 +115,10 @@ update_status ModulePhysics::PostUpdate()
 		LOG("Physics debug mode: %s", debugMode ? "ON" : "OFF");
 	}
 
-	// Render debug visualization
+	// Handle mouse joint for dragging bodies in debug mode
 	if (debugMode)
 	{
+		HandleMouseJoint();
 		DebugDraw();
 	}
 
@@ -135,6 +146,17 @@ bool ModulePhysics::CleanUp()
 		contactListener = nullptr;
 	}
 	
+	// Destroy mouse joint if active
+	if (mouseJoint)
+	{
+		if (world)
+		{
+			world->DestroyJoint(mouseJoint);
+		}
+		mouseJoint = nullptr;
+		draggedBody = nullptr;
+	}
+	
 	// Delete Box2D world (this destroys all b2Body objects)
 	if (world)
 	{
@@ -146,7 +168,7 @@ bool ModulePhysics::CleanUp()
 	return true;
 }
 
-// ===== BODY CREATION =====
+// Body creation methods
 PhysBody* ModulePhysics::CreateCircle(float x, float y, float radius, PhysBody::BodyType bodyType)
 {
 	if (!world)
@@ -407,7 +429,7 @@ void ModulePhysics::DestroyBody(PhysBody* body)
 	LOG("Destroyed physics body");
 }
 
-// ===== WORLD PROPERTIES =====
+// World properties
 void ModulePhysics::SetGravity(float gx, float gy)
 {
 	if (!world) return;
@@ -438,7 +460,7 @@ bool ModulePhysics::IsDebugMode() const
 	return debugMode;
 }
 
-// ===== RAYCASTING =====
+// Raycasting
 class RaycastCallback : public b2RayCastCallback
 {
 public:
@@ -517,7 +539,7 @@ int ModulePhysics::QueryArea(float minX, float minY, float maxX, float maxY, std
 	return (int)outBodies.size();
 }
 
-// ===== DEBUG RENDERING =====
+// Debug rendering
 void ModulePhysics::DebugDraw()
 {
 #ifndef NDEBUG // Only include debug draw in debug builds
@@ -662,4 +684,82 @@ void ModulePhysics::DebugDraw()
 	       }
        }
 #endif // NDEBUG
+}
+
+// Handle mouse joint for dragging bodies in debug mode
+void ModulePhysics::HandleMouseJoint()
+{
+	if (!world) return;
+
+	Vector2 mousePos = GetMousePosition();
+
+	// Start dragging on left mouse press
+	if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && !mouseJoint)
+	{
+		LOG("Mouse button pressed at (%.0f, %.0f)", mousePos.x, mousePos.y);
+		LOG("Mouse button pressed at (%.0f, %.0f)", mousePos.x, mousePos.y);
+		// Find closest body to mouse position
+		PhysBody* closest = nullptr;
+		float minDist = FLT_MAX;
+
+		for (PhysBody* body : bodies)
+		{
+			if (!body || !body->IsActive()) continue;
+
+			float x, y;
+			body->GetPositionF(x, y);
+			float dx = mousePos.x - x;
+			float dy = mousePos.y - y;
+			float dist = sqrtf(dx * dx + dy * dy);
+
+			if (dist < minDist && dist < 100.0f) // Increased radius for selection
+			{
+				minDist = dist;
+				closest = body;
+			}
+		}
+
+		// Create mouse joint if body found
+		if (closest)
+		{
+			draggedBody = closest;
+			LOG("Mouse joint created for body at distance %.2f", minDist);
+
+			b2MouseJointDef def;
+			def.bodyA = groundBody; // Attach to ground
+			def.bodyB = closest->GetB2Body();   // The body to drag
+			def.target = b2Vec2(mousePos.x * PIXELS_TO_METERS, mousePos.y * PIXELS_TO_METERS);
+			def.maxForce = 10000.0f * closest->GetMass(); // Stronger force to move body
+			def.stiffness = 100.0f; // Linear stiffness in N/m
+			def.damping = 10.0f; // Linear damping in N*s/m
+
+			mouseJoint = (b2MouseJoint*)world->CreateJoint(&def);
+		}
+		else
+		{
+			LOG("No body found near mouse position (%.0f, %.0f)", mousePos.x, mousePos.y);
+		}
+	}
+
+	// Update joint target while dragging
+	if (mouseJoint && IsMouseButtonDown(MOUSE_LEFT_BUTTON))
+	{
+		mouseJoint->SetTarget(b2Vec2(mousePos.x * PIXELS_TO_METERS, mousePos.y * PIXELS_TO_METERS));
+
+		// Draw joint line (optional)
+		if (draggedBody)
+		{
+			float x, y;
+			draggedBody->GetPositionF(x, y);
+			DrawLine((int)x, (int)y, (int)mousePos.x, (int)mousePos.y, RED);
+		}
+	}
+
+	// Release joint on mouse release
+	if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON) && mouseJoint)
+	{
+		world->DestroyJoint(mouseJoint);
+		mouseJoint = nullptr;
+		draggedBody = nullptr;
+	}
 }

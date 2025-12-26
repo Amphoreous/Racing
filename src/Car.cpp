@@ -84,6 +84,9 @@ update_status Car::Update()
 	// Apply natural friction to simulate drag
 	ApplyFriction();
 
+	// Apply downforce (simulated gravity pressing car to ground)
+	ApplyDownforce();
+
 	// Clamp speed to max speed
 	ClampSpeed();
 
@@ -325,4 +328,24 @@ vec2f Car::GetRightVector() const
 	right.y = sinf(angleRad);
 
 	return right;
+}
+
+void Car::ApplyDownforce()
+{
+	if (!physBody)
+		return;
+
+	// Downforce magnitude (simulates gravity pressing car to ground)
+	const float downforce = 9.8f * physBody->GetMass();
+
+	// Get car's local 'down' vector (perpendicular to forward, in 2D top-down)
+	// This simulates gravity directed from vehicle to ground
+	float angleRad = physBody->GetRotation() * 0.0174533f; // degrees to radians
+	float downX = -sinf(angleRad); // local Y- in world X
+	float downY = cosf(angleRad);  // local Y- in world Y
+
+	// Apply downforce (increases traction without moving car in 2D plane)
+	// This can be used to enhance friction or for advanced physics
+	// physBody->ApplyForce(downX * downforce, downY * downforce);
+	// (Currently commented out as it's not needed for basic top-down movement)
 }

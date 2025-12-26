@@ -26,8 +26,8 @@ bool ModuleGame::Start()
 	// Print resource statistics after loading
 	PrintResourceStatistics();
 
-	// TODO: Load track, obstacles, AI opponents, etc.
-	// Player is handled by ModulePlayer
+	// Future: Load race track, obstacles, AI cars, etc.
+	// For now, player car is handled by ModulePlayer
 
 	return ret;
 }
@@ -118,10 +118,9 @@ int ModuleGame::GetLoadedResourceCount() const
 // Print resource statistics for debugging
 void ModuleGame::PrintResourceStatistics() const
 {
-	LOG("========== RESOURCE STATISTICS ==========");
+	LOG("Resource statistics:");
 	LOG("Textures loaded: %d", App->resources->GetTextureCount());
 	LOG("Sounds loaded: %d", App->resources->GetSoundCount());
 	LOG("Music tracks loaded: %d", App->resources->GetMusicCount());
 	LOG("Total resources: %d", GetLoadedResourceCount());
-	LOG("=========================================");
 }

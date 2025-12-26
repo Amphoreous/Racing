@@ -20,24 +20,14 @@ Application::Application()
 	player = new ModulePlayer(this);
 	scene_intro = new ModuleGame(this);
 
-	// The order of calls is very important!
-	// Modules will Init() Start() and Update in this order
-	// They will CleanUp() in reverse order
-
-	// Main Modules - Resources must be initialized early
+	// Module initialization order matters - resources first, rendering last
 	AddModule(window);
-	AddModule(resources);
+	AddModule(resources);  // Load resources early
 	AddModule(physics);
 	AddModule(audio);
-	
-	//Player
-	AddModule(player);
-
-	// Scenes
-	AddModule(scene_intro);
-
-	// Rendering happens at the end
-	AddModule(renderer);
+	AddModule(player);     // Player setup
+	AddModule(scene_intro); // Game scene
+	AddModule(renderer);   // Draw last
 }
 
 Application::~Application()

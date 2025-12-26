@@ -1,7 +1,4 @@
-// ----------------------------------------------------
-// j1Timer.cpp
-// Fast timer with milisecons precision
-// ----------------------------------------------------
+// Simple timer class for measuring elapsed time
 
 #include "Timer.h"
 

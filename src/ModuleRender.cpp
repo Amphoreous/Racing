@@ -9,49 +9,33 @@ ModuleRender::ModuleRender(Application* app, bool start_enabled) : Module(app, s
     background = RAYWHITE;
 }
 
-// Destructor
 ModuleRender::~ModuleRender()
 {}
 
-// Called before render is available
 bool ModuleRender::Init()
 {
-	LOG("Creating Renderer context");
-	bool ret = true;
-
-	return ret;
+	LOG("Setting up renderer");
+	return true;
 }
 
-// PreUpdate: clear buffer
 update_status ModuleRender::PreUpdate()
 {
 	return UPDATE_CONTINUE;
 }
 
-// Update: debug camera
 update_status ModuleRender::Update()
 {
     ClearBackground(background);
-
-    // NOTE: This function setups render batching system for
-    // maximum performance, all consecutive Draw() calls are
-    // not processed until EndDrawing() is called
-    BeginDrawing();
-
+    BeginDrawing();  // Start drawing batch for better performance
 	return UPDATE_CONTINUE;
 }
 
-// PostUpdate present buffer to screen
 update_status ModuleRender::PostUpdate()
 {
-
-    // Draw everything in our batch! (FPS now handled by debug overlay)
-    EndDrawing();
-
+    EndDrawing();  // Render everything at once
 	return UPDATE_CONTINUE;
 }
 
-// Called before quitting
 bool ModuleRender::CleanUp()
 {
 	return true;
