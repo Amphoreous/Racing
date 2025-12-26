@@ -1,14 +1,14 @@
 
-#include "Module.h"
-#include "ModuleWindow.h"
-#include "ModuleRender.h"
-#include "ModuleAudio.h"
-#include "ModulePhysics.h"
-#include "ModuleGame.h"
-#include "ModuleResources.h"
-#include "Player.h"
+#include "core/Module.h"
+#include "modules/ModuleWindow.h"
+#include "modules/ModuleRender.h"
+#include "modules/ModuleAudio.h"
+#include "modules/ModulePhysics.h"
+#include "modules/ModuleGame.h"
+#include "modules/ModuleResources.h"
+#include "entities/Player.h"
 
-#include "Application.h"
+#include "core/Application.h"
 
 Application::Application()
 {

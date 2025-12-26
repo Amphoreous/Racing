@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Module.h"
-#include "Globals.h"
-#include "PhysBody.h"
+#include "core/Module.h"
+#include "core/Globals.h"
+#include "entities/PhysBody.h"
 #include <vector>
 
 // Forward declarations - NEVER expose Box2D types in this header

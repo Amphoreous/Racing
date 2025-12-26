@@ -1,8 +1,8 @@
-#include "Car.h"
-#include "Application.h"
-#include "ModulePhysics.h"
-#include "ModuleRender.h"
-#include "PhysBody.h"
+#include "entities/Car.h"
+#include "core/Application.h"
+#include "modules/ModulePhysics.h"
+#include "modules/ModuleRender.h"
+#include "entities/PhysBody.h"
 #include <math.h>
 
 // Default car physics values (tunable)

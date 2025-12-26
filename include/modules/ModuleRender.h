@@ -1,6 +1,6 @@
 #pragma once
-#include "Module.h"
-#include "Globals.h"
+#include "core/Module.h"
+#include "core/Globals.h"
 
 #include <limits.h>
 

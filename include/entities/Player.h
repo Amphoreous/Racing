@@ -1,7 +1,7 @@
 #pragma once
-#include "Module.h"
-#include "Globals.h"
-#include "p2Point.h"
+#include "core/Module.h"
+#include "core/Globals.h"
+#include "core/p2Point.h"
 
 class Car;
 

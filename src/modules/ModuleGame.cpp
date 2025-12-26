@@ -1,10 +1,10 @@
-#include "Globals.h"
-#include "Application.h"
-#include "ModuleRender.h"
-#include "ModuleGame.h"
-#include "ModuleAudio.h"
-#include "ModulePhysics.h"
-#include "ModuleResources.h"
+#include "core/Globals.h"
+#include "core/Application.h"
+#include "modules/ModuleRender.h"
+#include "modules/ModuleGame.h"
+#include "modules/ModuleAudio.h"
+#include "modules/ModulePhysics.h"
+#include "modules/ModuleResources.h"
 
 ModuleGame::ModuleGame(Application* app, bool start_enabled) : Module(app, start_enabled)
 {

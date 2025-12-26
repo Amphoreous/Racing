@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Globals.h"
-#include "PhysBody.h"
+#include "core/Globals.h"
+#include "entities/PhysBody.h"
 #include "raylib.h"
 
 class Application;

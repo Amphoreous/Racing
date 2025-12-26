@@ -1,6 +1,6 @@
-#include "Globals.h"
-#include "Application.h"
-#include "ModuleResources.h"
+#include "core/Globals.h"
+#include "core/Application.h"
+#include "modules/ModuleResources.h"
 #include <algorithm>
 
 ModuleResources::ModuleResources(Application* app, bool start_enabled) : Module(app, start_enabled)

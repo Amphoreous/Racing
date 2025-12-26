@@ -1,9 +1,9 @@
 #pragma once
 
-#include "Globals.h"
-#include "Module.h"
+#include "core/Globals.h"
+#include "core/Module.h"
 
-#include "p2Point.h"
+#include "core/p2Point.h"
 
 #include "raylib.h"
 #include <vector>

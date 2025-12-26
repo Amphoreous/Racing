@@ -1,6 +1,6 @@
-#include "Player.h"
-#include "Application.h"
-#include "Car.h"
+#include "entities/Player.h"
+#include "core/Application.h"
+#include "entities/Car.h"
 #include "raylib.h"
 
 ModulePlayer::ModulePlayer(Application* app, bool start_enabled)

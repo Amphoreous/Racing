@@ -1,5 +1,5 @@
-#include "PhysBody.h"
-#include "Globals.h"
+#include "entities/PhysBody.h"
+#include "core/Globals.h"
 #include "box2d/box2d.h"
 
 // Physics constants

@@ -1,6 +1,6 @@
 // Simple timer class for measuring elapsed time
 
-#include "Timer.h"
+#include "core/Timer.h"
 
 #include "raylib.h"
 

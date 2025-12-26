@@ -1,5 +1,5 @@
-#include "Application.h"
-#include "Globals.h"
+#include "core/Application.h"
+#include "core/Globals.h"
 
 #include "raylib.h"
 

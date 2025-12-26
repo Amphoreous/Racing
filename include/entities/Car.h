@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Entity.h"
+#include "entities/Entity.h"
 #include "raylib.h"
-#include "p2Point.h"
+#include "core/p2Point.h"
 
 class Car : public Entity
 {

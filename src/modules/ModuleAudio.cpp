@@ -1,7 +1,7 @@
-#include "Globals.h"
-#include "Application.h"
-#include "ModuleAudio.h"
-#include "ModuleResources.h"
+#include "core/Globals.h"
+#include "core/Application.h"
+#include "modules/ModuleAudio.h"
+#include "modules/ModuleResources.h"
 
 #include "raylib.h"
 

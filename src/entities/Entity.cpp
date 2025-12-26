@@ -1,5 +1,5 @@
-#include "Entity.h"
-#include "Application.h"
+#include "entities/Entity.h"
+#include "core/Application.h"
 
 Entity::Entity(Application* app)
 	: app(app), physBody(nullptr), active(true)

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Globals.h"
-#include "Timer.h"
+#include "core/Globals.h"
+#include "core/Timer.h"
 #include <vector>
 
 class Module;

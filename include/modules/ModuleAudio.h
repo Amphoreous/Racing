@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Module.h"
+#include "core/Module.h"
 
 #define MAX_SOUNDS	16
 #define DEFAULT_MUSIC_FADE_TIME 2.0f
