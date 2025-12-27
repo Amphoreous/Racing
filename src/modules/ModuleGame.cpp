@@ -37,27 +37,33 @@ void ModuleGame::LoadGameTextures()
 {
 	LOG("Loading game textures through resource manager...");
 
-	// Example 1: Load a background texture (if file exists)
-	// Texture2D background = App->resources->LoadTexture("assets/background.png");
-	// if (background.id != 0)
+	// Load the main background for static screen rendering
+	backgroundTexture = App->resources->LoadTexture("assets/ui/backgrounds/main_background.jpg");
+	if (backgroundTexture.id != 0)
+	{
+		LOG("Main background loaded successfully for static screen rendering");
+	}
+	else
+	{
+		LOG("Failed to load main background texture!");
+	}
+
+	// Example 2: Load HUD elements
+	// Texture2D speedometer = App->resources->LoadTexture("assets/ui/hud/hud_speedometer.png");
+	// Texture2D lapCounter = App->resources->LoadTexture("assets/ui/hud/hud_lap_counter.png");
+	// if (speedometer.id != 0 && lapCounter.id != 0)
 	// {
-	//	gameElements.emplace_back("background", background, 0, 0);
-	//	LOG("Background texture loaded successfully");
+	//	gameElements.emplace_back("speedometer", speedometer, 50, 50);
+	//	gameElements.emplace_back("lap_counter", lapCounter, 800, 50);
+	//	LOG("HUD elements loaded successfully");
 	// }
 
-	// Example 2: Load multiple textures
-	// const char* textureNames[] = { "player.png", "enemy.png", "obstacle.png" };
-	// for (const char* textureName : textureNames)
+	// Example 3: Load game sprites
+	// Texture2D playerCar = App->resources->LoadTexture("assets/sprites/car_player.png");
+	// if (playerCar.id != 0)
 	// {
-	//	std::string fullPath = "assets/";
-	//	fullPath += textureName;
-	//	Texture2D tex = App->resources->LoadTexture(fullPath.c_str());
-	//	if (tex.id != 0)
-	//	{
-	//		GameElement element(textureName, tex, 100, 100);
-	//		gameElements.push_back(element);
-	//		LOG("Loaded texture: %s", textureName);
-	//	}
+	//	gameElements.emplace_back("player_car", playerCar, 400, 300);
+	//	LOG("Player car sprite loaded successfully");
 	// }
 
 	// NOTE: Best practices:
@@ -65,6 +71,24 @@ void ModuleGame::LoadGameTextures()
 	// 2. NEVER call ::LoadTexture() directly in ModuleGame
 	// 3. The resource manager handles caching and prevents duplicate loads
 	// 4. Resources are automatically cleaned up in ModuleResources::CleanUp()
+}
+
+// Render the static background at window dimensions
+void ModuleGame::RenderTiledBackground() const
+{
+	if (backgroundTexture.id == 0)
+		return; // No background texture loaded
+
+	// Get window dimensions (not screen dimensions)
+	int windowWidth = GetRenderWidth();
+	int windowHeight = GetRenderHeight();
+
+	// Draw the background texture scaled to fit the entire window
+	Rectangle sourceRect = { 0, 0, (float)backgroundTexture.width, (float)backgroundTexture.height };
+	Rectangle destRect = { 0, 0, (float)windowWidth, (float)windowHeight };
+	Vector2 origin = { 0, 0 };
+
+	DrawTexturePro(backgroundTexture, sourceRect, destRect, origin, 0.0f, WHITE);
 }
 
 // Render all game elements
@@ -96,11 +120,20 @@ bool ModuleGame::CleanUp()
 // Update game logic
 update_status ModuleGame::Update()
 {
+	// Game logic updates happen here
+	// Player car is updated in ModulePlayer
+
+	return UPDATE_CONTINUE;
+}
+
+// Post-update: Render everything (called after BeginDrawing)
+update_status ModuleGame::PostUpdate()
+{
+	// Render the tiled background first (behind everything else)
+	RenderTiledBackground();
+	
 	// Render all game elements
 	RenderGameElements();
-
-	// TODO: Update track, obstacles, AI opponents, etc.
-	// Player car is updated in ModulePlayer
 
 	return UPDATE_CONTINUE;
 }

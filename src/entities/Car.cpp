@@ -2,6 +2,7 @@
 #include "core/Application.h"
 #include "modules/ModulePhysics.h"
 #include "modules/ModuleRender.h"
+#include "modules/ModuleResources.h"
 #include "entities/PhysBody.h"
 #include <math.h>
 
@@ -13,8 +14,8 @@
 #define DEFAULT_REVERSE_MAX_SPEED 50.0f
 #define DEFAULT_STEERING_SENSITIVITY 200.0f
 #define DEFAULT_DRIFT_IMPULSE 500.0f
-#define DEFAULT_CAR_WIDTH 40.0f
-#define DEFAULT_CAR_HEIGHT 70.0f
+#define DEFAULT_CAR_WIDTH 40.0f   // Narrower for vertical car
+#define DEFAULT_CAR_HEIGHT 70.0f  // Taller for vertical car
 #define FRICTION_COEFFICIENT 0.98f
 
 Car::Car(Application* app)
@@ -28,7 +29,7 @@ Car::Car(Application* app)
 	, driftImpulse(DEFAULT_DRIFT_IMPULSE)
 	, texture({ 0 })
 	, tint(WHITE)
-	, renderScale(1.0f)
+	, renderScale(0.075f)  // Scale 1890x1417 texture to 70x52 pixels (fits width, maintains aspect ratio)
 {
 }
 
@@ -66,11 +67,25 @@ bool Car::Start()
 	physBody->SetLinearVelocity(0.0f, 0.0f);
 	physBody->SetAngularVelocity(0.0f);
 
+	// Set initial rotation to face up (standard for top-down racing)
+	physBody->SetRotation(90.0f);  // 90 degrees = facing up
+
 	// Disable gravity for top-down racing game
 	physBody->SetGravityScale(0.0f);
 
 	// Set user data to reference this car
 	physBody->SetUserData(this);
+
+	// Load car texture
+	texture = app->resources->LoadTexture("assets/sprites/car_player.png");
+	if (texture.id != 0)
+	{
+		LOG("Car texture loaded successfully");
+	}
+	else
+	{
+		LOG("WARNING: Failed to load car texture, using fallback rectangle");
+	}
 
 	LOG("Car created successfully");
 	return true;
@@ -106,11 +121,12 @@ void Car::Draw() const
 	if (texture.id != 0)
 	{
 		// Calculate texture center
-		Rectangle source = { 0, 0, (float)texture.width, (float)texture.height };
+		Rectangle source = { (float)texture.width, 0, -(float)texture.width, (float)texture.height };
 		Rectangle dest = { x, y, texture.width * renderScale, texture.height * renderScale };
 		Vector2 origin = { (texture.width * renderScale) * 0.5f, (texture.height * renderScale) * 0.5f };
 
-		DrawTexturePro(texture, source, dest, origin, rotation, tint);
+		// Add 90 degrees to sprite rotation since sprite faces right but car faces up
+		DrawTexturePro(texture, source, dest, origin, rotation + 90.0f, tint);
 	}
 	else
 	{

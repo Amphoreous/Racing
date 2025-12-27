@@ -45,7 +45,15 @@ update_status ModulePlayer::Update()
 	// Update car physics
 	playerCar->Update();
 
-	// Draw the car
+	return UPDATE_CONTINUE;
+}
+
+update_status ModulePlayer::PostUpdate()
+{
+	if (!playerCar)
+		return UPDATE_CONTINUE;
+
+	// Draw the car (after BeginDrawing)
 	playerCar->Draw();
 
 	return UPDATE_CONTINUE;

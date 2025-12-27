@@ -36,6 +36,7 @@ public:
 
 	bool Start();
 	update_status Update();
+	update_status PostUpdate();
 	bool CleanUp();
 
 	// Resource access (for demonstration purposes)
@@ -46,7 +47,15 @@ private:
 	// Game elements stored with their textures managed by ModuleResources
 	std::vector<GameElement> gameElements;
 	
+	// Background texture for tiled rendering
+	Texture2D backgroundTexture;
+	
 	// Helper method to load game textures
 	void LoadGameTextures();
+	
+	// Render the tiled background across the entire map
+	void RenderTiledBackground() const;
+	
+	// Render all game elements
 	void RenderGameElements() const;
 };

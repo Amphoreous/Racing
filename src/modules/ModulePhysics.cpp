@@ -63,9 +63,9 @@ ModulePhysics::~ModulePhysics()
 {
 }
 
-bool ModulePhysics::Start()
+bool ModulePhysics::Init()
 {
-	LOG("Creating Physics 2D environment");
+	LOG("Initializing Physics 2D environment");
 	
 	// Create Box2D world with gravity
 	b2Vec2 gravity(GRAVITY_X, GRAVITY_Y);
@@ -87,7 +87,12 @@ bool ModulePhysics::Start()
 	groundBodyDef.position.Set(0.0f, 0.0f);
 	groundBody = world->CreateBody(&groundBodyDef);
 	
-	LOG("Physics world created successfully");
+	LOG("Physics world initialized successfully");
+	return true;
+}
+
+bool ModulePhysics::Start()
+{
 	return true;
 }
 

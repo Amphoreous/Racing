@@ -13,20 +13,20 @@
 Application::Application()
 {
 	window = new ModuleWindow(this);
-	renderer = new ModuleRender(this);
+	resources = new ModuleResources(this, true);
+	scene_intro = new ModuleGame(this);
 	audio = new ModuleAudio(this, true);
 	physics = new ModulePhysics(this);
-	resources = new ModuleResources(this, true);
 	player = new ModulePlayer(this);
-	scene_intro = new ModuleGame(this);
+	renderer = new ModuleRender(this);
 
 	// Module initialization order matters - resources first, rendering last
 	AddModule(window);
 	AddModule(resources);  // Load resources early
-	AddModule(physics);
+	AddModule(scene_intro); // Game scene (background)
 	AddModule(audio);
-	AddModule(player);     // Player setup
-	AddModule(scene_intro); // Game scene
+	AddModule(player);     // Player car
+	AddModule(physics);    // Physics debug render - on top of car
 	AddModule(renderer);   // Draw last
 }
 
