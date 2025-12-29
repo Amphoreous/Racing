@@ -7,8 +7,9 @@
 // Camera view modes for different viewing options
 enum CameraViewMode
 {
-	CAMERA_FOLLOW_CAR,    // Camera follows the car with rotation
-	CAMERA_FULL_MAP       // Camera shows the full map without rotation
+	CAMERA_FOLLOW_CAR,           // Camera follows the car with rotation
+	CAMERA_FOLLOW_CAR_NO_ROT,    // Camera follows the car without rotation
+	CAMERA_FULL_MAP              // Camera shows the full map without rotation
 };
 
 // ModuleRender: Handles all drawing operations

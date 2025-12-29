@@ -50,12 +50,20 @@ update_status ModuleRender::Update()
     UpdateCamera();
 
     ClearBackground(background);
+
+    // In full map view, render background in screen space (static)
+    if (cameraMode == CAMERA_FULL_MAP && App && App->scene_intro)
+    {
+        // Render background centered on screen for full map view
+        App->scene_intro->RenderTiledBackground(true);  // screenSpace = true
+    }
+
     BeginMode2D(camera);
 
-    // Render the background within camera space so it follows the camera
-    if (App && App->scene_intro)
+    // In follow car modes, render background within camera space (follows camera)
+    if (cameraMode != CAMERA_FULL_MAP && App && App->scene_intro)
     {
-        App->scene_intro->RenderTiledBackground();
+        App->scene_intro->RenderTiledBackground(false);  // screenSpace = false
     }
 
     // Render the map within camera space so it follows the camera
@@ -99,10 +107,15 @@ void ModuleRender::SetBackgroundColor(Color color)
 
 void ModuleRender::HandleCameraInput()
 {
-    // Toggle camera mode with C key
+    // Cycle through camera modes with C key
     if (IsKeyPressed(KEY_C))
     {
         if (cameraMode == CAMERA_FOLLOW_CAR)
+        {
+            cameraMode = CAMERA_FOLLOW_CAR_NO_ROT;
+            LOG("Camera mode: Follow Car (No Rotation)");
+        }
+        else if (cameraMode == CAMERA_FOLLOW_CAR_NO_ROT)
         {
             cameraMode = CAMERA_FULL_MAP;
             LOG("Camera mode: Full Map View");
@@ -110,7 +123,7 @@ void ModuleRender::HandleCameraInput()
         else
         {
             cameraMode = CAMERA_FOLLOW_CAR;
-            LOG("Camera mode: Follow Car");
+            LOG("Camera mode: Follow Car (With Rotation)");
         }
     }
 }
@@ -136,6 +149,25 @@ void ModuleRender::UpdateCamera()
 
         // Set camera rotation to match player car rotation (negated for correct direction)
         camera.rotation = -playerRotation;
+        
+        // Reset zoom to normal
+        camera.zoom = 1.0f;
+    }
+    else if (cameraMode == CAMERA_FOLLOW_CAR_NO_ROT)
+    {
+        // Follow car mode without rotation
+        if (!App->player || !App->player->GetCar())
+            return;
+
+        // Get player car position
+        float playerX, playerY;
+        App->player->GetCar()->GetPosition(playerX, playerY);
+
+        // Set camera target to player position
+        camera.target = { playerX, playerY };
+
+        // No rotation in this mode
+        camera.rotation = 0.0f;
         
         // Reset zoom to normal
         camera.zoom = 1.0f;

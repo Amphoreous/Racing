@@ -44,7 +44,8 @@ public:
 	void PrintResourceStatistics() const;
 
 	// Render the tiled background across the entire map
-	void RenderTiledBackground() const;
+	// screenSpace: true = render centered on screen, false = render centered on camera in world space
+	void RenderTiledBackground(bool screenSpace = false) const;
 
 private:
 	// Game elements stored with their textures managed by ModuleResources

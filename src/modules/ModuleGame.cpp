@@ -75,24 +75,33 @@ void ModuleGame::LoadGameTextures()
 }
 
 // Render the background within camera space so it follows the camera
-void ModuleGame::RenderTiledBackground() const
+void ModuleGame::RenderTiledBackground(bool screenSpace) const
 {
 	if (backgroundTexture.id == 0)
 		return; // No background texture loaded
 
-	// Get camera position to center the background on the camera
-	float cameraX = 0, cameraY = 0;
-	if (App && App->player && App->player->GetCar())
+	if (screenSpace)
 	{
-		App->player->GetCar()->GetPosition(cameraX, cameraY);
+		// Render centered on screen (for full map view)
+		Rectangle sourceRect = { 0, 0, (float)backgroundTexture.width, (float)backgroundTexture.height };
+		Rectangle destRect = { SCREEN_WIDTH/2.0f - backgroundTexture.width/2.0f, SCREEN_HEIGHT/2.0f - backgroundTexture.height/2.0f, (float)backgroundTexture.width, (float)backgroundTexture.height };
+		Vector2 origin = { 0, 0 };
+		DrawTexturePro(backgroundTexture, sourceRect, destRect, origin, 0.0f, WHITE);
 	}
+	else
+	{
+		// Render in world space centered on camera (for follow car modes)
+		float cameraX = 0, cameraY = 0;
+		if (App && App->player && App->player->GetCar())
+		{
+			App->player->GetCar()->GetPosition(cameraX, cameraY);
+		}
 
-	// Draw the background texture centered on the camera position
-	Rectangle sourceRect = { 0, 0, (float)backgroundTexture.width, (float)backgroundTexture.height };
-	Rectangle destRect = { cameraX - backgroundTexture.width/2.0f, cameraY - backgroundTexture.height/2.0f, (float)backgroundTexture.width, (float)backgroundTexture.height };
-	Vector2 origin = { 0, 0 };
-
-	DrawTexturePro(backgroundTexture, sourceRect, destRect, origin, 0.0f, WHITE);
+		Rectangle sourceRect = { 0, 0, (float)backgroundTexture.width, (float)backgroundTexture.height };
+		Rectangle destRect = { cameraX - backgroundTexture.width/2.0f, cameraY - backgroundTexture.height/2.0f, (float)backgroundTexture.width, (float)backgroundTexture.height };
+		Vector2 origin = { 0, 0 };
+		DrawTexturePro(backgroundTexture, sourceRect, destRect, origin, 0.0f, WHITE);
+	}
 }
 
 // Render all game elements
