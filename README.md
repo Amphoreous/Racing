@@ -120,7 +120,7 @@ Module responsibilities (convention)
 - Rendering: Use raylib DrawTexturePro and convert Box2D radians → degrees for sprite rotation.
 - Audio: Load via Resource Manager to prevent leaks. Test .ogg and .wav decoding on your platform.
 - Debugging: Provide clear logging around module initialization and asset loading failures to troubleshoot runtime errors.
-- 
+
 ---
 
 ## Development stats
