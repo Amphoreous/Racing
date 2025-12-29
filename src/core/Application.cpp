@@ -6,6 +6,7 @@
 #include "modules/ModuleGame.h"
 #include "modules/ModuleResources.h"
 #include "entities/Player.h"
+#include "entities/NPCManager.h"
 #include "core/Map.h"
 #include "entities/CheckpointManager.h"
 
@@ -20,7 +21,8 @@ Application::Application()
 	audio = new ModuleAudio(this, true);
 	physics = new ModulePhysics(this);
 	player = new ModulePlayer(this);
-	checkpointManager = new CheckpointManager(this);  // AÑADIR ESTA LÍNEA
+	npcManager = new NPCManager(this);  // AÑADIR ESTA LÍNEA
+	checkpointManager = new CheckpointManager(this);
 	renderer = new ModuleRender(this);
 
 	// Module initialization order matters - resources first, rendering last
@@ -30,7 +32,8 @@ Application::Application()
 	AddModule(audio);
 	AddModule(map);
 	AddModule(player);     // Player car
-	AddModule(checkpointManager);  // AÑADIR ESTA LÍNEA - después del player
+	AddModule(npcManager); // AÑADIR ESTA LÍNEA - NPC cars after player
+	AddModule(checkpointManager);
 	AddModule(physics);    // Physics debug render - on top of car
 	AddModule(renderer);
 }

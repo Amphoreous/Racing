@@ -12,6 +12,7 @@ class ModulePhysics;
 class ModuleGame;
 class ModuleResources;
 class ModulePlayer;
+class NPCManager;
 class Map;
 class CheckpointManager;
 
@@ -26,6 +27,7 @@ public:
 	ModuleGame* scene_intro;
 	ModuleResources* resources;
 	ModulePlayer* player;
+	NPCManager* npcManager;
 	Map* map;
 	CheckpointManager* checkpointManager;
 
