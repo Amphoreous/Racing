@@ -13,6 +13,7 @@ class ModuleGame;
 class ModuleResources;
 class ModulePlayer;
 class Map;
+class CheckpointManager;
 
 class Application
 {
@@ -26,6 +27,7 @@ public:
 	ModuleResources* resources;
 	ModulePlayer* player;
 	Map* map;
+	CheckpointManager* checkpointManager;
 
 private:
 

@@ -52,7 +52,11 @@
     <property name="Order" type="int" value="5"/>
    </properties>
   </object>
-  <object id="30" name="FL" x="2898" y="1529.5" width="92" height="408.5"/>
+  <object id="30" name="FL" x="2898" y="1529.5" width="92" height="408.5">
+   <properties>
+    <property name="Order" type="int" value="0"/>
+   </properties>
+  </object>
  </objectgroup>
  <objectgroup id="4" name="Positions" offsetx="1664" offsety="984">
   <object id="7" name="Start" type="Start" x="1569.83" y="1000.06"/>

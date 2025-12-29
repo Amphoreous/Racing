@@ -169,245 +169,270 @@ static std::string Trim(const std::string& str)
 
 bool Map::Load(const std::string& path, const std::string& fileName)
 {
-    bool ret = false;
-    mapFileName = fileName;
-    mapPath = path;
-    std::string fullPath = mapPath + mapFileName;
+	bool ret = false;
+	mapFileName = fileName;
+	mapPath = path;
+	std::string fullPath = mapPath + mapFileName;
 
-    LOG("Loading map: %s", fullPath.c_str());
+	LOG("Loading map: %s", fullPath.c_str());
 
-    std::ifstream file(fullPath);
-    if (!file.is_open())
-    {
-        LOG("ERROR: Could not open map file: %s", fullPath.c_str());
-        return false;
-    }
+	std::ifstream file(fullPath);
+	if (!file.is_open())
+	{
+		LOG("ERROR: Could not open map file: %s", fullPath.c_str());
+		return false;
+	}
 
-    std::string line;
-    bool inLayer = false;
-    bool inData = false;
-    bool inTileset = false;
-    bool inObjectGroup = false;
-    bool inObject = false;
-    bool inImageLayer = false;
-    MapLayer* currentLayer = nullptr;
-    TileSet* currentTileset = nullptr;
-    MapObject* currentObject = nullptr;
-    MapImageLayer* currentImageLayer = nullptr;
-    std::string dataBuffer;
+	std::string line;
+	bool inLayer = false;
+	bool inData = false;
+	bool inTileset = false;
+	bool inObjectGroup = false;
+	bool inObject = false;
+	bool inImageLayer = false;
+	bool inProperties = false;  // AÑADIR ESTA LÍNEA
+	MapLayer* currentLayer = nullptr;
+	TileSet* currentTileset = nullptr;
+	MapObject* currentObject = nullptr;
+	MapImageLayer* currentImageLayer = nullptr;
+	std::string dataBuffer;
 
-    while (std::getline(file, line))
-    {
-        line = Trim(line);
+	while (std::getline(file, line))
+	{
+		line = Trim(line);
 
-        // Parse map properties
-        if (line.find("<map ") != std::string::npos)
-        {
-            mapData.width = GetAttributeInt(line, "width");
-            mapData.height = GetAttributeInt(line, "height");
-            mapData.tileWidth = GetAttributeInt(line, "tilewidth");
-            mapData.tileHeight = GetAttributeInt(line, "tileheight");
-            LOG("Map size: %dx%d, Tile size: %dx%d", mapData.width, mapData.height, mapData.tileWidth, mapData.tileHeight);
-        }
+		// Parse map properties
+		if (line.find("<map ") != std::string::npos)
+		{
+			mapData.width = GetAttributeInt(line, "width");
+			mapData.height = GetAttributeInt(line, "height");
+			mapData.tileWidth = GetAttributeInt(line, "tilewidth");
+			mapData.tileHeight = GetAttributeInt(line, "tileheight");
+			LOG("Map size: %dx%d, Tile size: %dx%d", mapData.width, mapData.height, mapData.tileWidth, mapData.tileHeight);
+		}
 
-        // Parse tileset
-        if (line.find("<tileset ") != std::string::npos)
-        {
-            currentTileset = new TileSet();
-            currentTileset->firstGid = GetAttributeInt(line, "firstgid");
-            currentTileset->name = GetAttributeValue(line, "name");
-            currentTileset->tileWidth = GetAttributeInt(line, "tilewidth");
-            currentTileset->tileHeight = GetAttributeInt(line, "tileheight");
-            currentTileset->spacing = GetAttributeInt(line, "spacing");
-            currentTileset->margin = GetAttributeInt(line, "margin");
-            currentTileset->tileCount = GetAttributeInt(line, "tilecount");
-            currentTileset->columns = GetAttributeInt(line, "columns");
-            inTileset = true;
-        }
+		// Parse tileset
+		if (line.find("<tileset ") != std::string::npos)
+		{
+			currentTileset = new TileSet();
+			currentTileset->firstGid = GetAttributeInt(line, "firstgid");
+			currentTileset->name = GetAttributeValue(line, "name");
+			currentTileset->tileWidth = GetAttributeInt(line, "tilewidth");
+			currentTileset->tileHeight = GetAttributeInt(line, "tileheight");
+			currentTileset->spacing = GetAttributeInt(line, "spacing");
+			currentTileset->margin = GetAttributeInt(line, "margin");
+			currentTileset->tileCount = GetAttributeInt(line, "tilecount");
+			currentTileset->columns = GetAttributeInt(line, "columns");
+			inTileset = true;
+		}
 
-        if (inTileset && line.find("<image ") != std::string::npos)
-        {
-            std::string imageSource = GetAttributeValue(line, "source");
-            if (!imageSource.empty() && currentTileset != nullptr)
-            {
-                currentTileset->imagePath = mapPath + imageSource;
-                currentTileset->texture = App->resources->LoadTexture(currentTileset->imagePath.c_str());
-                LOG("Loaded tileset texture: %s", currentTileset->imagePath.c_str());
-            }
-        }
+		if (inTileset && line.find("<image ") != std::string::npos)
+		{
+			std::string imageSource = GetAttributeValue(line, "source");
+			if (!imageSource.empty() && currentTileset != nullptr)
+			{
+				currentTileset->imagePath = mapPath + imageSource;
+				currentTileset->texture = App->resources->LoadTexture(currentTileset->imagePath.c_str());
+				LOG("Loaded tileset texture: %s", currentTileset->imagePath.c_str());
+			}
+		}
 
-        if (line.find("</tileset>") != std::string::npos)
-        {
-            if (currentTileset != nullptr)
-            {
-                mapData.tilesets.push_back(currentTileset);
-                currentTileset = nullptr;
-            }
-            inTileset = false;
-        }
+		if (line.find("</tileset>") != std::string::npos)
+		{
+			if (currentTileset != nullptr)
+			{
+				mapData.tilesets.push_back(currentTileset);
+				currentTileset = nullptr;
+			}
+			inTileset = false;
+		}
 
-        if (line.find("<imagelayer ") != std::string::npos)
-        {
-            currentImageLayer = new MapImageLayer();
-            currentImageLayer->id = GetAttributeInt(line, "id");
-            currentImageLayer->name = GetAttributeValue(line, "name");
-            currentImageLayer->offsetX = GetAttributeInt(line, "offsetx", 0);
-            currentImageLayer->offsetY = GetAttributeInt(line, "offsety", 0);
-            inImageLayer = true;
-            LOG("Loading image layer: %s", currentImageLayer->name.c_str());
-        }
+		if (line.find("<imagelayer ") != std::string::npos)
+		{
+			currentImageLayer = new MapImageLayer();
+			currentImageLayer->id = GetAttributeInt(line, "id");
+			currentImageLayer->name = GetAttributeValue(line, "name");
+			currentImageLayer->offsetX = GetAttributeInt(line, "offsetx", 0);
+			currentImageLayer->offsetY = GetAttributeInt(line, "offsety", 0);
+			inImageLayer = true;
+			LOG("Loading image layer: %s", currentImageLayer->name.c_str());
+		}
 
-        if (inImageLayer && line.find("<image ") != std::string::npos)
-        {
-            std::string imageSource = GetAttributeValue(line, "source");
-            if (!imageSource.empty() && currentImageLayer != nullptr)
-            {
-                currentImageLayer->imagePath = mapPath + imageSource;
-                currentImageLayer->texture = App->resources->LoadTexture(currentImageLayer->imagePath.c_str());
-                LOG("Loaded image layer texture: %s", currentImageLayer->imagePath.c_str());
-            }
-        }
+		if (inImageLayer && line.find("<image ") != std::string::npos)
+		{
+			std::string imageSource = GetAttributeValue(line, "source");
+			if (!imageSource.empty() && currentImageLayer != nullptr)
+			{
+				currentImageLayer->imagePath = mapPath + imageSource;
+				currentImageLayer->texture = App->resources->LoadTexture(currentImageLayer->imagePath.c_str());
+				LOG("Loaded image layer texture: %s", currentImageLayer->imagePath.c_str());
+			}
+		}
 
-        if (line.find("</imagelayer>") != std::string::npos)
-        {
-            if (currentImageLayer != nullptr)
-            {
-                mapData.imageLayers.push_back(currentImageLayer);
-                currentImageLayer = nullptr;
-            }
-            inImageLayer = false;
-        }
+		if (line.find("</imagelayer>") != std::string::npos)
+		{
+			if (currentImageLayer != nullptr)
+			{
+				mapData.imageLayers.push_back(currentImageLayer);
+				currentImageLayer = nullptr;
+			}
+			inImageLayer = false;
+		}
 
-        // Parse layer
-        if (line.find("<layer ") != std::string::npos)
-        {
-            currentLayer = new MapLayer();
-            currentLayer->id = GetAttributeInt(line, "id");
-            currentLayer->name = GetAttributeValue(line, "name");
-            currentLayer->width = GetAttributeInt(line, "width");
-            currentLayer->height = GetAttributeInt(line, "height");
-            inLayer = true;
-            LOG("Loading layer: %s (%dx%d)", currentLayer->name.c_str(), currentLayer->width, currentLayer->height);
-        }
+		// Parse layer
+		if (line.find("<layer ") != std::string::npos)
+		{
+			currentLayer = new MapLayer();
+			currentLayer->id = GetAttributeInt(line, "id");
+			currentLayer->name = GetAttributeValue(line, "name");
+			currentLayer->width = GetAttributeInt(line, "width");
+			currentLayer->height = GetAttributeInt(line, "height");
+			inLayer = true;
+			LOG("Loading layer: %s (%dx%d)", currentLayer->name.c_str(), currentLayer->width, currentLayer->height);
+		}
 
-        if (inLayer && line.find("<data ") != std::string::npos)
-        {
-            inData = true;
-            dataBuffer.clear();
-        }
+		if (inLayer && line.find("<data ") != std::string::npos)
+		{
+			inData = true;
+			dataBuffer.clear();
+		}
 
-        if (inData)
-        {
-            if (line.find("</data>") != std::string::npos)
-            {
-                // Remove the closing tag
-                size_t pos = line.find("</data>");
-                if (pos != std::string::npos)
-                {
-                    dataBuffer += line.substr(0, pos);
-                }
+		if (inData)
+		{
+			if (line.find("</data>") != std::string::npos)
+			{
+				// Remove the closing tag
+				size_t pos = line.find("</data>");
+				if (pos != std::string::npos)
+				{
+					dataBuffer += line.substr(0, pos);
+				}
 
-                // Parse CSV data
-                if (currentLayer != nullptr)
-                {
-                    std::stringstream ss(dataBuffer);
-                    std::string token;
-                    while (std::getline(ss, token, ','))
-                    {
-                        token = Trim(token);
-                        if (!token.empty())
-                        {
-                            currentLayer->tiles.push_back(std::stoi(token));
-                        }
-                    }
-                    LOG("Layer '%s' loaded with %d tiles", currentLayer->name.c_str(), (int)currentLayer->tiles.size());
-                }
+				// Parse CSV data
+				if (currentLayer != nullptr)
+				{
+					std::stringstream ss(dataBuffer);
+					std::string token;
+					while (std::getline(ss, token, ','))
+					{
+						token = Trim(token);
+						if (!token.empty())
+						{
+							currentLayer->tiles.push_back(std::stoi(token));
+						}
+					}
+					LOG("Layer '%s' loaded with %d tiles", currentLayer->name.c_str(), (int)currentLayer->tiles.size());
+				}
 
-                inData = false;
-            }
-            else if (line.find("<data") == std::string::npos)
-            {
-                dataBuffer += line;
-            }
-        }
+				inData = false;
+			}
+			else if (line.find("<data") == std::string::npos)
+			{
+				dataBuffer += line;
+			}
+		}
 
-        if (line.find("</layer>") != std::string::npos)
-        {
-            if (currentLayer != nullptr)
-            {
-                mapData.layers.push_back(currentLayer);
-                currentLayer = nullptr;
-            }
-            inLayer = false;
-        }
+		if (line.find("</layer>") != std::string::npos)
+		{
+			if (currentLayer != nullptr)
+			{
+				mapData.layers.push_back(currentLayer);
+				currentLayer = nullptr;
+			}
+			inLayer = false;
+		}
 
-        // Parse object groups
-        if (line.find("<objectgroup ") != std::string::npos)
-        {
-            inObjectGroup = true;
-        }
+		// Parse object groups
+		if (line.find("<objectgroup ") != std::string::npos)
+		{
+			inObjectGroup = true;
+		}
 
-        if (inObjectGroup && line.find("<object ") != std::string::npos)
-        {
-            currentObject = new MapObject();
-            currentObject->id = GetAttributeInt(line, "id");
-            currentObject->name = GetAttributeValue(line, "name");
-            currentObject->type = GetAttributeValue(line, "type");
-            currentObject->x = GetAttributeInt(line, "x");
-            currentObject->y = GetAttributeInt(line, "y");
-            currentObject->width = GetAttributeInt(line, "width");
-            currentObject->height = GetAttributeInt(line, "height");
+		if (inObjectGroup && line.find("<object ") != std::string::npos)
+		{
+			currentObject = new MapObject();
+			currentObject->id = GetAttributeInt(line, "id");
+			currentObject->name = GetAttributeValue(line, "name");
+			currentObject->type = GetAttributeValue(line, "type");
+			currentObject->x = GetAttributeInt(line, "x");
+			currentObject->y = GetAttributeInt(line, "y");
+			currentObject->width = GetAttributeInt(line, "width");
+			currentObject->height = GetAttributeInt(line, "height");
 
-            // Check if it's a self-closing tag
-            if (line.find("/>") != std::string::npos)
-            {
-                mapData.objects.push_back(currentObject);
-                LOG("Loaded object: %s at (%d, %d)", currentObject->name.c_str(), currentObject->x, currentObject->y);
-                currentObject = nullptr;
-            }
-            else
-            {
-                inObject = true;
-            }
-        }
+			// Check if it's a self-closing tag
+			if (line.find("/>") != std::string::npos)
+			{
+				mapData.objects.push_back(currentObject);
+				LOG("Loaded object: %s at (%d, %d)", currentObject->name.c_str(), currentObject->x, currentObject->y);
+				currentObject = nullptr;
+			}
+			else
+			{
+				inObject = true;
+			}
+		}
 
-        if (line.find("</object>") != std::string::npos)
-        {
-            if (currentObject != nullptr)
-            {
-                mapData.objects.push_back(currentObject);
-                LOG("Loaded object: %s at (%d, %d)", currentObject->name.c_str(), currentObject->x, currentObject->y);
-                currentObject = nullptr;
-            }
-            inObject = false;
-        }
+		// AÑADIR ESTAS LÍNEAS PARA PARSEAR PROPIEDADES
+		if (inObject && line.find("<properties>") != std::string::npos)
+		{
+			inProperties = true;
+		}
 
-        if (line.find("</objectgroup>") != std::string::npos)
-        {
-            inObjectGroup = false;
-        }
-    }
+		if (inProperties && line.find("<property ") != std::string::npos)
+		{
+			if (currentObject)
+			{
+				Properties::Property* prop = new Properties::Property();
+				prop->name = GetAttributeValue(line, "name");
+				prop->value = GetAttributeValue(line, "value");
+				currentObject->properties.propertyList.push_back(prop);
+				LOG("  Property: %s = %s", prop->name.c_str(), prop->value.c_str());
+			}
+		}
 
-    file.close();
+		if (inProperties && line.find("</properties>") != std::string::npos)
+		{
+			inProperties = false;
+		}
+		// FIN DE LAS LÍNEAS AÑADIDAS
 
-    ret = !mapData.layers.empty() || !mapData.imageLayers.empty() || !mapData.objects.empty();
-    mapLoaded = ret;
+		if (line.find("</object>") != std::string::npos)
+		{
+			if (currentObject != nullptr)
+			{
+				mapData.objects.push_back(currentObject);
+				LOG("Loaded object: %s at (%d, %d)", currentObject->name.c_str(), currentObject->x, currentObject->y);
+				currentObject = nullptr;
+			}
+			inObject = false;
+		}
 
-    if (ret)
-    {
-        LOG("Successfully loaded map: %s", fileName.c_str());
-        LOG("Tilesets: %d, Layers: %d, Image Layers: %d, Objects: %d",
-            (int)mapData.tilesets.size(),
-            (int)mapData.layers.size(),
-            (int)mapData.imageLayers.size(),
-            (int)mapData.objects.size());
-    }
-    else
-    {
-        LOG("ERROR: Failed to load map data from: %s", fileName.c_str());
-    }
+		if (line.find("</objectgroup>") != std::string::npos)
+		{
+			inObjectGroup = false;
+		}
+	}
 
-    return ret;
+	file.close();
+
+	ret = !mapData.layers.empty() || !mapData.imageLayers.empty() || !mapData.objects.empty();
+	mapLoaded = ret;
+
+	if (ret)
+	{
+		LOG("Successfully loaded map: %s", fileName.c_str());
+		LOG("Tilesets: %d, Layers: %d, Image Layers: %d, Objects: %d",
+			(int)mapData.tilesets.size(),
+			(int)mapData.layers.size(),
+			(int)mapData.imageLayers.size(),
+			(int)mapData.objects.size());
+	}
+	else
+	{
+		LOG("ERROR: Failed to load map data from: %s", fileName.c_str());
+	}
+
+	return ret;
 }
 
 vec2f Map::MapToWorld(int i, int j) const

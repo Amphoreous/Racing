@@ -574,122 +574,158 @@ int ModulePhysics::QueryArea(float minX, float minY, float maxX, float maxY, std
 void ModulePhysics::DebugDraw()
 {
 #ifndef NDEBUG // Only include debug draw in debug builds
-       if (!world) return;
+	if (!world) return;
 
-       // --- Draw all bodies in world space ---
-       for (b2Body* b = world->GetBodyList(); b; b = b->GetNext())
-       {
-	       // Color code by body type
-	       Color color = GRAY;
-	       switch (b->GetType()) {
-		       case b2_staticBody: color = BLUE; break;
-		       case b2_kinematicBody: color = ORANGE; break;
-		       case b2_dynamicBody: color = GREEN; break;
-		       default: color = GRAY; break;
-	       }
-	       for (b2Fixture* f = b->GetFixtureList(); f; f = f->GetNext())
-	       {
-		       switch (f->GetType())
-		       {
-			       // Draw circles
-			       case b2Shape::e_circle:
-			       {
-				       b2CircleShape* shape = (b2CircleShape*)f->GetShape();
-				       b2Vec2 pos = b->GetPosition();
-				       float px = pos.x * METERS_TO_PIXELS;
-				       float py = pos.y * METERS_TO_PIXELS;
-				       float radius = shape->m_radius * METERS_TO_PIXELS;
-				       DrawCircleLines((int)px, (int)py, radius, color);
-				       // Draw position cross
-				       DrawLine((int)px-5, (int)py, (int)px+5, (int)py, YELLOW);
-				       DrawLine((int)px, (int)py-5, (int)px, (int)py+5, YELLOW);
-			       }
-			       break;
+	// --- Draw all bodies in world space ---
+	for (b2Body* b = world->GetBodyList(); b; b = b->GetNext())
+	{
+		for (b2Fixture* f = b->GetFixtureList(); f; f = f->GetNext())
+		{
+			// Color code by body type AND sensor status
+			Color color = GRAY;
 
-			       // Draw polygons
-			       case b2Shape::e_polygon:
-			       {
-				       b2PolygonShape* polygonShape = (b2PolygonShape*)f->GetShape();
-				       int32 count = polygonShape->m_count;
-				       b2Vec2 prev, v;
-				       for (int32 i = 0; i < count; ++i)
-				       {
-					       v = b->GetWorldPoint(polygonShape->m_vertices[i]);
-					       if (i > 0)
-					       {
-						       float x1 = prev.x * METERS_TO_PIXELS;
-						       float y1 = prev.y * METERS_TO_PIXELS;
-						       float x2 = v.x * METERS_TO_PIXELS;
-						       float y2 = v.y * METERS_TO_PIXELS;
-						       DrawLine((int)x1, (int)y1, (int)x2, (int)y2, color);
-					       }
-					       prev = v;
-				       }
-				       v = b->GetWorldPoint(polygonShape->m_vertices[0]);
-				       float x1 = prev.x * METERS_TO_PIXELS;
-				       float y1 = prev.y * METERS_TO_PIXELS;
-				       float x2 = v.x * METERS_TO_PIXELS;
-				       float y2 = v.y * METERS_TO_PIXELS;
-				       DrawLine((int)x1, (int)y1, (int)x2, (int)y2, color);
-			       }
-			       break;
+			// Check if it's a sensor first - SENSORS ARE PURPLE
+			if (f->IsSensor())
+			{
+				color = PURPLE;  // Sensors in purple (checkpoints)
+			}
+			else
+			{
+				// Normal bodies color by type
+				switch (b->GetType()) {
+				case b2_staticBody: color = BLUE; break;
+				case b2_kinematicBody: color = ORANGE; break;
+				case b2_dynamicBody: color = GREEN; break;
+				default: color = GRAY; break;
+				}
+			}
 
-			       // Draw chains
-			       case b2Shape::e_chain:
-			       {
-				       b2ChainShape* shape = (b2ChainShape*)f->GetShape();
-				       b2Vec2 prev, v;
-				       for (int32 i = 0; i < shape->m_count; ++i)
-				       {
-					       v = b->GetWorldPoint(shape->m_vertices[i]);
-					       if (i > 0)
-					       {
-						       float x1 = prev.x * METERS_TO_PIXELS;
-						       float y1 = prev.y * METERS_TO_PIXELS;
-						       float x2 = v.x * METERS_TO_PIXELS;
-						       float y2 = v.y * METERS_TO_PIXELS;
-						       DrawLine((int)x1, (int)y1, (int)x2, (int)y2, color);
-					       }
-					       prev = v;
-				       }
-			       }
-			       break;
+			switch (f->GetType())
+			{
+				// Draw circles
+			case b2Shape::e_circle:
+			{
+				b2CircleShape* shape = (b2CircleShape*)f->GetShape();
+				b2Vec2 pos = b->GetPosition();
+				float px = pos.x * METERS_TO_PIXELS;
+				float py = pos.y * METERS_TO_PIXELS;
+				float radius = shape->m_radius * METERS_TO_PIXELS;
 
-			       // Draw edge shapes
-			       case b2Shape::e_edge:
-			       {
-				       b2EdgeShape* shape = (b2EdgeShape*)f->GetShape();
-				       b2Vec2 v1 = b->GetWorldPoint(shape->m_vertex1);
-				       b2Vec2 v2 = b->GetWorldPoint(shape->m_vertex2);
-				       float x1 = v1.x * METERS_TO_PIXELS;
-				       float y1 = v1.y * METERS_TO_PIXELS;
-				       float x2 = v2.x * METERS_TO_PIXELS;
-				       float y2 = v2.y * METERS_TO_PIXELS;
-				       DrawLine((int)x1, (int)y1, (int)x2, (int)y2, color);
-			       }
-			       break;
-		       }
-	       }
-       }
+				// Draw thicker outline for sensors
+				DrawCircleLines((int)px, (int)py, radius, color);
+				if (f->IsSensor())
+				{
+					DrawCircleLines((int)px, (int)py, radius - 1, color);
+				}
 
-       // Draw active collision points and normals
-       for (const CollisionInfo& collision : activeCollisions)
-       {
-	       // Draw collision point as a red circle
-	       DrawCircle((int)collision.x, (int)collision.y, 3, RED);
-	       
-	       // Draw collision normal as a yellow line
-	       float normalLength = 20.0f;
-	       float endX = collision.x + collision.normalX * normalLength;
-	       float endY = collision.y + collision.normalY * normalLength;
-	       DrawLine((int)collision.x, (int)collision.y, (int)endX, (int)endY, YELLOW);
-	       
-	       // Draw separation indicator (green if separating, red if penetrating)
-	       Color sepColor = (collision.separation > 0) ? GREEN : RED;
-	       float sepX = collision.x + collision.normalX * collision.separation * 10.0f;
-	       float sepY = collision.y + collision.normalY * collision.separation * 10.0f;
-	       DrawCircle((int)sepX, (int)sepY, 2, sepColor);
-       }
+				// Draw position cross
+				DrawLine((int)px - 5, (int)py, (int)px + 5, (int)py, YELLOW);
+				DrawLine((int)px, (int)py - 5, (int)px, (int)py + 5, YELLOW);
+			}
+			break;
+
+			// Draw polygons (RECTANGLES - CHECKPOINTS USE THIS)
+			case b2Shape::e_polygon:
+			{
+				b2PolygonShape* polygonShape = (b2PolygonShape*)f->GetShape();
+				int32 count = polygonShape->m_count;
+				b2Vec2 prev, v;
+
+				// Draw all edges of the polygon
+				for (int32 i = 0; i < count; ++i)
+				{
+					v = b->GetWorldPoint(polygonShape->m_vertices[i]);
+					if (i > 0)
+					{
+						float x1 = prev.x * METERS_TO_PIXELS;
+						float y1 = prev.y * METERS_TO_PIXELS;
+						float x2 = v.x * METERS_TO_PIXELS;
+						float y2 = v.y * METERS_TO_PIXELS;
+						DrawLine((int)x1, (int)y1, (int)x2, (int)y2, color);
+
+						// Draw double line for sensors (thicker outline)
+						if (f->IsSensor())
+						{
+							DrawLine((int)x1 + 1, (int)y1, (int)x2 + 1, (int)y2, color);
+							DrawLine((int)x1, (int)y1 + 1, (int)x2, (int)y2 + 1, color);
+						}
+					}
+					prev = v;
+				}
+
+				// Close the polygon (connect last vertex to first)
+				v = b->GetWorldPoint(polygonShape->m_vertices[0]);
+				float x1 = prev.x * METERS_TO_PIXELS;
+				float y1 = prev.y * METERS_TO_PIXELS;
+				float x2 = v.x * METERS_TO_PIXELS;
+				float y2 = v.y * METERS_TO_PIXELS;
+				DrawLine((int)x1, (int)y1, (int)x2, (int)y2, color);
+
+				// Draw double line for sensors (thicker outline)
+				if (f->IsSensor())
+				{
+					DrawLine((int)x1 + 1, (int)y1, (int)x2 + 1, (int)y2, color);
+					DrawLine((int)x1, (int)y1 + 1, (int)x2, (int)y2 + 1, color);
+				}
+			}
+			break;
+
+			// Draw chains
+			case b2Shape::e_chain:
+			{
+				b2ChainShape* shape = (b2ChainShape*)f->GetShape();
+				b2Vec2 prev, v;
+				for (int32 i = 0; i < shape->m_count; ++i)
+				{
+					v = b->GetWorldPoint(shape->m_vertices[i]);
+					if (i > 0)
+					{
+						float x1 = prev.x * METERS_TO_PIXELS;
+						float y1 = prev.y * METERS_TO_PIXELS;
+						float x2 = v.x * METERS_TO_PIXELS;
+						float y2 = v.y * METERS_TO_PIXELS;
+						DrawLine((int)x1, (int)y1, (int)x2, (int)y2, color);
+					}
+					prev = v;
+				}
+			}
+			break;
+
+			// Draw edge shapes
+			case b2Shape::e_edge:
+			{
+				b2EdgeShape* shape = (b2EdgeShape*)f->GetShape();
+				b2Vec2 v1 = b->GetWorldPoint(shape->m_vertex1);
+				b2Vec2 v2 = b->GetWorldPoint(shape->m_vertex2);
+				float x1 = v1.x * METERS_TO_PIXELS;
+				float y1 = v1.y * METERS_TO_PIXELS;
+				float x2 = v2.x * METERS_TO_PIXELS;
+				float y2 = v2.y * METERS_TO_PIXELS;
+				DrawLine((int)x1, (int)y1, (int)x2, (int)y2, color);
+			}
+			break;
+			}
+		}
+	}
+
+	// Draw active collision points and normals
+	for (const CollisionInfo& collision : activeCollisions)
+	{
+		// Draw collision point as a red circle
+		DrawCircle((int)collision.x, (int)collision.y, 3, RED);
+
+		// Draw collision normal as a yellow line
+		float normalLength = 20.0f;
+		float endX = collision.x + collision.normalX * normalLength;
+		float endY = collision.y + collision.normalY * normalLength;
+		DrawLine((int)collision.x, (int)collision.y, (int)endX, (int)endY, YELLOW);
+
+		// Draw separation indicator (green if separating, red if penetrating)
+		Color sepColor = (collision.separation > 0) ? GREEN : RED;
+		float sepX = collision.x + collision.normalX * collision.separation * 10.0f;
+		float sepY = collision.y + collision.normalY * collision.separation * 10.0f;
+		DrawCircle((int)sepX, (int)sepY, 2, sepColor);
+	}
 #endif // NDEBUG
 }
 
