@@ -123,7 +123,6 @@ update_status ModulePhysics::PostUpdate()
 	if (debugMode)
 	{
 		HandleMouseJoint();
-		DebugDraw();
 	}
 
 	return UPDATE_CONTINUE;
@@ -549,50 +548,7 @@ void ModulePhysics::DebugDraw()
 #ifndef NDEBUG // Only include debug draw in debug builds
        if (!world) return;
 
-       // --- Debug Info Overlay ---
-
-	   int overlayX = 10, overlayY = 10, overlayW = 370, overlayH = 160;
-	   // Use solid black background for readability
-	   DrawRectangle(overlayX, overlayY, overlayW, overlayH, BLACK);
-	   DrawRectangleLines(overlayX, overlayY, overlayW, overlayH, YELLOW);
-
-	   // FPS
-	   int fps = GetFPS();
-	   DrawText(TextFormat("FPS: %d", fps), overlayX + 10, overlayY + 10, 22, WHITE);
-
-	   // Body count
-	   int bodyCount = 0;
-	   for (b2Body* b = world->GetBodyList(); b; b = b->GetNext()) ++bodyCount;
-	   DrawText(TextFormat("Bodies: %d", bodyCount), overlayX + 120, overlayY + 10, 22, WHITE);
-
-	   // Mouse position
-	   Vector2 mouse = GetMousePosition();
-	   DrawText(TextFormat("Mouse: (%.0f, %.0f)", mouse.x, mouse.y), overlayX + 10, overlayY + 40, 20, WHITE);
-
-	   // Gravity info
-	   b2Vec2 gravity = world->GetGravity();
-	   DrawText(TextFormat("Gravity: (%.2f, %.2f)", gravity.x, gravity.y), overlayX + 10, overlayY + 65, 20, WHITE);
-
-	   // Step info
-	   DrawText(TextFormat("Step: dt=1/60, VelIters=%d, PosIters=%d", VELOCITY_ITERATIONS, POSITION_ITERATIONS), overlayX + 10, overlayY + 90, 18, WHITE);
-
-	   // World size
-	   DrawText(TextFormat("World: %dx%d px", SCREEN_WIDTH, SCREEN_HEIGHT), overlayX + 10, overlayY + 110, 18, WHITE);
-
-	   // Player vehicle position (if available)
-	   float carX = 0, carY = 0;
-	   bool hasCar = false;
-	   if (App && App->player && App->player->GetCar()) {
-		   App->player->GetCar()->GetPosition(carX, carY);
-		   hasCar = true;
-	   }
-	   if (hasCar) {
-		   DrawText(TextFormat("Car Pos: (%.1f, %.1f)", carX, carY), overlayX + 10, overlayY + 130, 20, YELLOW);
-	   } else {
-		   DrawText("Car Pos: (N/A)", overlayX + 10, overlayY + 130, 20, GRAY);
-	   }
-
-       // --- Draw all bodies ---
+       // --- Draw all bodies in world space ---
        for (b2Body* b = world->GetBodyList(); b; b = b->GetNext())
        {
 	       // Color code by body type
@@ -690,6 +646,57 @@ void ModulePhysics::DebugDraw()
 #endif // NDEBUG
 }
 
+// Public method to render debug overlay (called from ModuleRender after EndMode2D)
+void ModulePhysics::RenderDebug()
+{
+#ifndef NDEBUG
+	if (!world) return;
+
+	// --- Debug Info Overlay (HUD) ---
+
+	int overlayX = 10, overlayY = 10, overlayW = 370, overlayH = 160;
+	// Use solid black background for readability
+	DrawRectangle(overlayX, overlayY, overlayW, overlayH, BLACK);
+	DrawRectangleLines(overlayX, overlayY, overlayW, overlayH, YELLOW);
+
+	// FPS
+	int fps = GetFPS();
+	DrawText(TextFormat("FPS: %d", fps), overlayX + 10, overlayY + 10, 22, WHITE);
+
+	// Body count
+	int bodyCount = 0;
+	for (b2Body* b = world->GetBodyList(); b; b = b->GetNext()) ++bodyCount;
+	DrawText(TextFormat("Bodies: %d", bodyCount), overlayX + 120, overlayY + 10, 22, WHITE);
+
+	// Mouse position
+	Vector2 mouse = GetMousePosition();
+	DrawText(TextFormat("Mouse: (%.0f, %.0f)", mouse.x, mouse.y), overlayX + 10, overlayY + 40, 20, WHITE);
+
+	// Gravity info
+	b2Vec2 gravity = world->GetGravity();
+	DrawText(TextFormat("Gravity: (%.2f, %.2f)", gravity.x, gravity.y), overlayX + 10, overlayY + 65, 20, WHITE);
+
+	// Step info
+	DrawText(TextFormat("Step: dt=1/60, VelIters=%d, PosIters=%d", VELOCITY_ITERATIONS, POSITION_ITERATIONS), overlayX + 10, overlayY + 90, 18, WHITE);
+
+	// World size
+	DrawText(TextFormat("World: %dx%d px", SCREEN_WIDTH, SCREEN_HEIGHT), overlayX + 10, overlayY + 110, 18, WHITE);
+
+	// Player vehicle position (if available)
+	float carX = 0, carY = 0;
+	bool hasCar = false;
+	if (App && App->player && App->player->GetCar()) {
+		App->player->GetCar()->GetPosition(carX, carY);
+		hasCar = true;
+	}
+	if (hasCar) {
+		DrawText(TextFormat("Car Pos: (%.1f, %.1f)", carX, carY), overlayX + 10, overlayY + 130, 20, YELLOW);
+	} else {
+		DrawText("Car Pos: (N/A)", overlayX + 10, overlayY + 130, 20, GRAY);
+	}
+#endif // NDEBUG
+}
+
 // Handle mouse joint for dragging bodies in debug mode
 void ModulePhysics::HandleMouseJoint()
 {
@@ -697,11 +704,14 @@ void ModulePhysics::HandleMouseJoint()
 
 	Vector2 mousePos = GetMousePosition();
 
+	// Convert screen coordinates to world coordinates for proper body selection
+	Vector2 worldMousePos = GetScreenToWorld2D(mousePos, App->renderer->camera);
+
 	// Start dragging on left mouse press
 	if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && !mouseJoint)
 	{
-		LOG("Mouse button pressed at (%.0f, %.0f)", mousePos.x, mousePos.y);
-		LOG("Mouse button pressed at (%.0f, %.0f)", mousePos.x, mousePos.y);
+		LOG("Mouse button pressed at screen (%.0f, %.0f) -> world (%.0f, %.0f)", mousePos.x, mousePos.y, worldMousePos.x, worldMousePos.y);
+
 		// Find closest body to mouse position
 		PhysBody* closest = nullptr;
 		float minDist = FLT_MAX;
@@ -712,8 +722,8 @@ void ModulePhysics::HandleMouseJoint()
 
 			float x, y;
 			body->GetPositionF(x, y);
-			float dx = mousePos.x - x;
-			float dy = mousePos.y - y;
+			float dx = worldMousePos.x - x;
+			float dy = worldMousePos.y - y;
 			float dist = sqrtf(dx * dx + dy * dy);
 
 			if (dist < minDist && dist < 100.0f) // Increased radius for selection
@@ -732,7 +742,7 @@ void ModulePhysics::HandleMouseJoint()
 			b2MouseJointDef def;
 			def.bodyA = groundBody; // Attach to ground
 			def.bodyB = closest->GetB2Body();   // The body to drag
-			def.target = b2Vec2(mousePos.x * PIXELS_TO_METERS, mousePos.y * PIXELS_TO_METERS);
+			def.target = b2Vec2(worldMousePos.x * PIXELS_TO_METERS, worldMousePos.y * PIXELS_TO_METERS);
 			def.maxForce = 10000.0f * closest->GetMass(); // Stronger force to move body
 			def.stiffness = 100.0f; // Linear stiffness in N/m
 			def.damping = 10.0f; // Linear damping in N*s/m
@@ -741,21 +751,22 @@ void ModulePhysics::HandleMouseJoint()
 		}
 		else
 		{
-			LOG("No body found near mouse position (%.0f, %.0f)", mousePos.x, mousePos.y);
+			LOG("No body found near mouse position (%.0f, %.0f)", worldMousePos.x, worldMousePos.y);
 		}
 	}
 
 	// Update joint target while dragging
 	if (mouseJoint && IsMouseButtonDown(MOUSE_LEFT_BUTTON))
 	{
-		mouseJoint->SetTarget(b2Vec2(mousePos.x * PIXELS_TO_METERS, mousePos.y * PIXELS_TO_METERS));
+		mouseJoint->SetTarget(b2Vec2(worldMousePos.x * PIXELS_TO_METERS, worldMousePos.y * PIXELS_TO_METERS));
 
-		// Draw joint line (optional)
+		// Draw joint line (optional) - convert world coordinates back to screen for drawing
 		if (draggedBody)
 		{
 			float x, y;
 			draggedBody->GetPositionF(x, y);
-			DrawLine((int)x, (int)y, (int)mousePos.x, (int)mousePos.y, RED);
+			Vector2 screenBodyPos = GetWorldToScreen2D({x, y}, App->renderer->camera);
+			DrawLine((int)screenBodyPos.x, (int)screenBodyPos.y, (int)mousePos.x, (int)mousePos.y, RED);
 		}
 	}
 

@@ -129,6 +129,7 @@ public:
     vec2i WorldToMap(int x, int y) const;
     TileSet* GetTilesetFromTileId(int gid) const;
     MapObject* GetObjectByName(const std::string& name) const;
+    void RenderMap() const;
 
 public:
     std::string mapFileName;
@@ -137,4 +138,5 @@ public:
 
 private:
     bool mapLoaded;
+    void CreateCollisionBodies();
 };

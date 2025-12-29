@@ -103,15 +103,21 @@ public:
 	// These are for PhysBody wrapper only
 	b2World* GetB2World() const { return world; }
 
+	// Public method to render debug overlay
+	void RenderDebug();
+
+	// Public method to render physics debug visualization
+	void DebugDraw();
+
 private:
-	// Box2D world - private, never exposed to game code
+	// Box2D world
 	b2World* world;
 	
-	// List of all created physics bodies (for cleanup)
-	std::vector<PhysBody*> bodies;
-	
-	// Debug rendering
+	// Debug mode flag
 	bool debugMode;
+	
+	// All physics bodies created by this module
+	std::vector<PhysBody*> bodies;
 	
 	// Mouse joint for debug dragging
 	class b2MouseJoint* mouseJoint;
@@ -119,7 +125,6 @@ private:
 	b2Body* groundBody;
 	
 	// Helper functions
-	void DebugDraw();
 	void HandleMouseJoint();
 	
 	// Contact listener for collision callbacks

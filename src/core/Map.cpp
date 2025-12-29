@@ -3,6 +3,7 @@
 #include "core/Globals.h"
 #include "modules/ModuleResources.h"
 #include "modules/ModuleRender.h"
+#include "modules/ModulePhysics.h"
 #include <sstream>
 #include <fstream>
 #include <algorithm>
@@ -25,6 +26,13 @@ bool Map::Start()
 {
     LOG("Starting Map Module");
     bool ret = Load("assets/map/", "Map.tmx");
+
+    if (ret)
+    {
+        // Create collision bodies for map objects
+        CreateCollisionBodies();
+    }
+
     return ret;
 }
 
@@ -36,47 +44,7 @@ update_status Map::Update()
 
 update_status Map::PostUpdate()
 {
-    if (!mapLoaded)
-        return UPDATE_CONTINUE;
-
-    for (const auto& imageLayer : mapData.imageLayers)
-    {
-        if (imageLayer->texture.id != 0)
-        {
-            // Draw the entire image at its offset position
-            App->renderer->Draw(imageLayer->texture,
-                imageLayer->offsetX,
-                imageLayer->offsetY,
-                nullptr);  // nullptr = draw entire texture
-        }
-    }
-
-    // Render all tile layers
-    for (const auto& mapLayer : mapData.layers)
-    {
-        for (int i = 0; i < mapData.height; i++)
-        {
-            for (int j = 0; j < mapData.width; j++)
-            {
-                int gid = mapLayer->Get(i, j);
-                if (gid == 0)
-                    continue;
-
-                TileSet* tileSet = GetTilesetFromTileId(gid);
-                if (tileSet != nullptr && tileSet->texture.id != 0)
-                {
-                    Rectangle tileRect = tileSet->GetRect(gid);
-                    vec2f mapCoord = MapToWorld(i, j);
-
-                    App->renderer->Draw(tileSet->texture,
-                        (int)mapCoord.x,
-                        (int)mapCoord.y,
-                        &tileRect);
-                }
-            }
-        }
-    }
-
+    // Map rendering is now handled by ModuleRender within camera space
     return UPDATE_CONTINUE;
 }
 
@@ -133,6 +101,38 @@ bool Map::CleanUp()
 
     mapLoaded = false;
     return true;
+}
+
+// Create physics bodies for collision objects
+void Map::CreateCollisionBodies()
+{
+    if (!App->physics)
+    {
+        LOG("Warning: Physics module not available for collision creation");
+        return;
+    }
+
+    for (const auto& object : mapData.objects)
+    {
+        if (object->type == "Normal" && object->width > 0 && object->height > 0)
+        {
+            // Create static rectangle body for collision
+            // Position is center of rectangle
+            float centerX = object->x + object->width * 0.5f;
+            float centerY = object->y + object->height * 0.5f;
+
+            PhysBody* body = App->physics->CreateRectangle(centerX, centerY, object->width, object->height, PhysBody::BodyType::STATIC);
+            if (body)
+            {
+                LOG("Created collision body for object '%s' at (%.1f, %.1f) size (%.1f, %.1f)",
+                    object->name.c_str(), centerX, centerY, object->width, object->height);
+            }
+            else
+            {
+                LOG("Failed to create collision body for object '%s'", object->name.c_str());
+            }
+        }
+    }
 }
 
 // Simple XML parser helper functions
@@ -437,4 +437,49 @@ MapObject* Map::GetObjectByName(const std::string& name) const
     }
     LOG("Warning: Object '%s' not found in map.", name.c_str());
     return nullptr;
+}
+
+void Map::RenderMap() const
+{
+    if (!mapLoaded)
+        return;
+
+    // Render all image layers
+    for (const auto& imageLayer : mapData.imageLayers)
+    {
+        if (imageLayer->texture.id != 0)
+        {
+            // Draw the entire image at its offset position
+            App->renderer->Draw(imageLayer->texture,
+                imageLayer->offsetX,
+                imageLayer->offsetY,
+                nullptr);  // nullptr = draw entire texture
+        }
+    }
+
+    // Render all tile layers
+    for (const auto& mapLayer : mapData.layers)
+    {
+        for (int i = 0; i < mapData.height; i++)
+        {
+            for (int j = 0; j < mapData.width; j++)
+            {
+                int gid = mapLayer->Get(i, j);
+                if (gid == 0)
+                    continue;
+
+                TileSet* tileSet = GetTilesetFromTileId(gid);
+                if (tileSet != nullptr && tileSet->texture.id != 0)
+                {
+                    Rectangle tileRect = tileSet->GetRect(gid);
+                    vec2f mapCoord = MapToWorld(i, j);
+
+                    App->renderer->Draw(tileSet->texture,
+                        (int)mapCoord.x,
+                        (int)mapCoord.y,
+                        &tileRect);
+                }
+            }
+        }
+    }
 }

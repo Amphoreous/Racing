@@ -1,7 +1,10 @@
 ﻿#include "core/Globals.h"
 #include "core/Application.h"
+#include "core/Map.h"
 #include "modules/ModuleWindow.h"
 #include "modules/ModuleRender.h"
+#include "modules/ModuleGame.h"
+#include "modules/ModulePhysics.h"
 #include "entities/Player.h"
 #include "entities/Car.h"
 #include <math.h>
@@ -9,7 +12,10 @@
 ModuleRender::ModuleRender(Application* app, bool start_enabled) : Module(app, start_enabled)
 {
     background = RAYWHITE;
-    camera = { 0, 0, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT };
+    camera.target = { 0, 0 };
+    camera.offset = { (float)SCREEN_WIDTH * 0.5f, (float)SCREEN_HEIGHT * 0.5f };
+    camera.rotation = 0.0f;
+    camera.zoom = 1.0f;
 }
 
 ModuleRender::~ModuleRender()
@@ -40,12 +46,39 @@ update_status ModuleRender::Update()
     UpdateCamera();
 
     ClearBackground(background);
-    BeginDrawing();
+    BeginMode2D(camera);
+
+    // Render the background within camera space so it follows the camera
+    if (App && App->scene_intro)
+    {
+        App->scene_intro->RenderTiledBackground();
+    }
+
+    // Render the map within camera space so it follows the camera
+    if (App && App->map)
+    {
+        App->map->RenderMap();
+    }
+
+    // Render physics debug visualization within camera space
+    if (App && App->physics)
+    {
+        App->physics->DebugDraw();
+    }
+
     return UPDATE_CONTINUE;
 }
 
 update_status ModuleRender::PostUpdate()
 {
+    EndMode2D();
+
+    // Render physics debug overlay in screen space (after camera transformations)
+    if (App && App->physics)
+    {
+        App->physics->RenderDebug();
+    }
+
     EndDrawing();
     return UPDATE_CONTINUE;
 }
@@ -65,13 +98,16 @@ void ModuleRender::UpdateCamera()
     if (!App || !App->player || !App->player->GetCar())
         return;
 
-    // Get player car position (this is updated by physics)
+    // Get player car position and rotation
     float playerX, playerY;
     App->player->GetCar()->GetPosition(playerX, playerY);
+    float playerRotation = App->player->GetCar()->GetRotation();
 
-    // Center camera on player - camera.x and camera.y represent the top-left corner
-    camera.x = playerX - (SCREEN_WIDTH * 0.5f);
-    camera.y = playerY - (SCREEN_HEIGHT * 0.5f);
+    // Set camera target to player position
+    camera.target = { playerX, playerY };
+
+    // Set camera rotation to match player car rotation (negated for correct direction)
+    camera.rotation = -playerRotation;
 }
 
 // Draw to screen
@@ -88,8 +124,9 @@ bool ModuleRender::Draw(Texture2D texture, int x, int y, const Rectangle* sectio
         rect = *section;
     }
 
-    position.x = (float)(x - pivot_x) * scale - camera.x;
-    position.y = (float)(y - pivot_y) * scale - camera.y;
+    // With BeginMode2D, position is in world coordinates
+    position.x = (float)(x - pivot_x) * scale;
+    position.y = (float)(y - pivot_y) * scale;
 
     if (section != NULL)
     {
@@ -106,7 +143,7 @@ bool ModuleRender::DrawText(const char* text, int x, int y, Font font, int spaci
 {
     bool ret = true;
 
-    Vector2 position = { (float)x - camera.x, (float)y - camera.y };
+    Vector2 position = { (float)x - camera.target.x, (float)y - camera.target.y };
 
     DrawTextEx(font, text, position, (float)font.baseSize, (float)spacing, tint);
 

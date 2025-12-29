@@ -43,6 +43,9 @@ public:
 	int GetLoadedResourceCount() const;
 	void PrintResourceStatistics() const;
 
+	// Render the tiled background across the entire map
+	void RenderTiledBackground() const;
+
 private:
 	// Game elements stored with their textures managed by ModuleResources
 	std::vector<GameElement> gameElements;
@@ -52,9 +55,6 @@ private:
 	
 	// Helper method to load game textures
 	void LoadGameTextures();
-	
-	// Render the tiled background across the entire map
-	void RenderTiledBackground() const;
 	
 	// Render all game elements
 	void RenderGameElements() const;

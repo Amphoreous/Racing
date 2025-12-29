@@ -1,5 +1,6 @@
 #include "entities/Player.h"
 #include "core/Application.h"
+#include "core/Map.h"
 #include "entities/Car.h"
 #include "raylib.h"
 
@@ -23,6 +24,17 @@ bool ModulePlayer::Start()
 	{
 		LOG("ERROR: Failed to create player car");
 		return false;
+	}
+
+	// Set starting position from map
+	MapObject* startPos = App->map->GetObjectByName("Start");
+	if (startPos)
+	{
+		playerCar->SetPosition((float)startPos->x, (float)startPos->y);
+	}
+	else
+	{
+		LOG("Warning: No start position found in map, using default");
 	}
 
 	// Configure player car

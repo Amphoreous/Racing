@@ -6,75 +6,44 @@
         {
             "label": "build debug",
             "type": "process",
-            "command": "make",
-            "windows": {
-                "command": "mingw32-make.exe",
-            },
-            "osx": {
-                "args": [
-                    "config=debug_arm64"
-                ],
-            },
+            "command": "C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\MSBuild\\Current\\Bin\\amd64\\MSBuild.exe",
+            "args": [
+                "Racing.sln",
+                "/p:Configuration=Debug"
+            ],
             "group": {
                 "kind": "build",
                 "isDefault": true
             },
             "problemMatcher": [
-                "$gcc"
-            ],
-            "dependsOn":["UpdateMake"]
+                "$msCompile"
+            ]
         },
         {
             "label": "build release",
             "type": "process",
-            "command": "make",
-            "windows": {
-                "command": "mingw32-make.exe",
-                "args": [
-                    "config=release_x64"
-                ],
-            },
-            "linux": {
-                "args": [
-                    "config=release_x64"
-                ],
-            },
-            "osx": {
-                "args": [
-                    "config=release_arm64"
-                ],
-            },
+            "command": "C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\MSBuild\\Current\\Bin\\amd64\\MSBuild.exe",
+            "args": [
+                "Racing.sln",
+                "/p:Configuration=Release"
+            ],
             "group": "build",
             "problemMatcher": [
-                "$gcc"
-            ],
-            "dependsOn":["UpdateMake"]
+                "$msCompile"
+            ]
         },
         {
             "label": "Clean",
             "type": "process",
-            "command": "make",
-            "windows": {
-                "command": "mingw32-make.exe",
-                "args": [
-                    "clean"
-                ],
-            },
-            "linux": {
-                "args": [
-                    "clean"
-                ],
-            },
-            "osx": {
-                "args": [
-                    "clean"
-                ],
-            },
+            "command": "C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\MSBuild\\Current\\Bin\\amd64\\MSBuild.exe",
+            "args": [
+                "Racing.sln",
+                "/t:Clean"
+            ],
             "group": "build",
             "problemMatcher": [
-                "$gcc"
-            ],
-            "dependsOn":["UpdateMake"]
+                "$msCompile"
+            ]
         },
         {
             "label": "UpdateMake",

@@ -5,6 +5,8 @@
 #include "modules/ModuleAudio.h"
 #include "modules/ModulePhysics.h"
 #include "modules/ModuleResources.h"
+#include "entities/Player.h"
+#include "entities/Car.h"
 
 ModuleGame::ModuleGame(Application* app, bool start_enabled) : Module(app, start_enabled)
 {
@@ -72,19 +74,22 @@ void ModuleGame::LoadGameTextures()
 	// 4. Resources are automatically cleaned up in ModuleResources::CleanUp()
 }
 
-// Render the static background at window dimensions
+// Render the background within camera space so it follows the camera
 void ModuleGame::RenderTiledBackground() const
 {
 	if (backgroundTexture.id == 0)
 		return; // No background texture loaded
 
-	// Get window dimensions (not screen dimensions)
-	int windowWidth = GetRenderWidth();
-	int windowHeight = GetRenderHeight();
+	// Get camera position to center the background on the camera
+	float cameraX = 0, cameraY = 0;
+	if (App && App->player && App->player->GetCar())
+	{
+		App->player->GetCar()->GetPosition(cameraX, cameraY);
+	}
 
-	// Draw the background texture scaled to fit the entire window
+	// Draw the background texture centered on the camera position
 	Rectangle sourceRect = { 0, 0, (float)backgroundTexture.width, (float)backgroundTexture.height };
-	Rectangle destRect = { 0, 0, (float)windowWidth, (float)windowHeight };
+	Rectangle destRect = { cameraX - backgroundTexture.width/2.0f, cameraY - backgroundTexture.height/2.0f, (float)backgroundTexture.width, (float)backgroundTexture.height };
 	Vector2 origin = { 0, 0 };
 
 	DrawTexturePro(backgroundTexture, sourceRect, destRect, origin, 0.0f, WHITE);
@@ -128,8 +133,6 @@ update_status ModuleGame::Update()
 // Post-update: Render everything (called after BeginDrawing)
 update_status ModuleGame::PostUpdate()
 {
-	RenderTiledBackground();
-
 	RenderGameElements();
 
 	return UPDATE_CONTINUE;
