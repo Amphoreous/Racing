@@ -2,12 +2,14 @@
 #include "core/Application.h"
 #include "modules/ModuleWindow.h"
 #include "modules/ModuleRender.h"
+#include "entities/Player.h"
+#include "entities/Car.h"
 #include <math.h>
 
 ModuleRender::ModuleRender(Application* app, bool start_enabled) : Module(app, start_enabled)
 {
     background = RAYWHITE;
-    camera = { 0, 0, 0, 0 };  // Initialize camera
+    camera = { 0, 0, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT };
 }
 
 ModuleRender::~ModuleRender()
@@ -20,6 +22,13 @@ bool ModuleRender::Init()
     return true;
 }
 
+bool ModuleRender::Start()
+{
+    // Initialize camera centered on player at start
+    UpdateCamera();
+    return true;
+}
+
 update_status ModuleRender::PreUpdate()
 {
     return UPDATE_CONTINUE;
@@ -27,14 +36,17 @@ update_status ModuleRender::PreUpdate()
 
 update_status ModuleRender::Update()
 {
+    // Update camera position to follow player BEFORE drawing anything
+    UpdateCamera();
+
     ClearBackground(background);
-    BeginDrawing();  // Start drawing batch for better performance
+    BeginDrawing();
     return UPDATE_CONTINUE;
 }
 
 update_status ModuleRender::PostUpdate()
 {
-    EndDrawing();  // Render everything at once
+    EndDrawing();
     return UPDATE_CONTINUE;
 }
 
@@ -46,6 +58,20 @@ bool ModuleRender::CleanUp()
 void ModuleRender::SetBackgroundColor(Color color)
 {
     background = color;
+}
+
+void ModuleRender::UpdateCamera()
+{
+    if (!App || !App->player || !App->player->GetCar())
+        return;
+
+    // Get player car position (this is updated by physics)
+    float playerX, playerY;
+    App->player->GetCar()->GetPosition(playerX, playerY);
+
+    // Center camera on player - camera.x and camera.y represent the top-left corner
+    camera.x = playerX - (SCREEN_WIDTH * 0.5f);
+    camera.y = playerY - (SCREEN_HEIGHT * 0.5f);
 }
 
 // Draw to screen
@@ -62,16 +88,14 @@ bool ModuleRender::Draw(Texture2D texture, int x, int y, const Rectangle* sectio
         rect = *section;
     }
 
-    position.x = (float)(x - pivot_x) * scale + camera.x;
-    position.y = (float)(y - pivot_y) * scale + camera.y;
+    position.x = (float)(x - pivot_x) * scale - camera.x;
+    position.y = (float)(y - pivot_y) * scale - camera.y;
 
     if (section != NULL)
     {
         rect.width *= scale;
         rect.height *= scale;
     }
-
-    // LOG("Drawing texture at (%.1f, %.1f), size: %.1fx%.1f", position.x, position.y, rect.width, rect.height);
 
     DrawTextureRec(texture, rect, position, WHITE);
 
@@ -82,7 +106,7 @@ bool ModuleRender::DrawText(const char* text, int x, int y, Font font, int spaci
 {
     bool ret = true;
 
-    Vector2 position = { (float)x, (float)y };
+    Vector2 position = { (float)x - camera.x, (float)y - camera.y };
 
     DrawTextEx(font, text, position, (float)font.baseSize, (float)spacing, tint);
 
