@@ -23,7 +23,12 @@
 // Contact listener for collision callbacks
 class ModulePhysics::PhysicsContactListener : public b2ContactListener
 {
+private:
+	ModulePhysics* physicsModule;
+	
 public:
+	PhysicsContactListener(ModulePhysics* module) : physicsModule(module) {}
+	
 	void BeginContact(b2Contact* contact) override
 	{
 		PhysBody* bodyA = (PhysBody*)contact->GetFixtureA()->GetBody()->GetUserData().pointer;
@@ -34,6 +39,26 @@ public:
 		
 		if (bodyB && bodyB->GetCollisionListener())
 			bodyB->GetCollisionListener()->OnCollisionEnter(bodyA);
+		
+		// Record collision for debug visualization
+		if (physicsModule && physicsModule->debugMode)
+		{
+			b2WorldManifold manifold;
+			contact->GetWorldManifold(&manifold);
+			
+			for (int i = 0; i < contact->GetManifold()->pointCount; ++i)
+			{
+				CollisionInfo collision;
+				collision.x = manifold.points[i].x * METERS_TO_PIXELS;
+				collision.y = manifold.points[i].y * METERS_TO_PIXELS;
+				collision.normalX = manifold.normal.x;
+				collision.normalY = manifold.normal.y;
+				collision.separation = manifold.separations[i];
+				
+				physicsModule->activeCollisions.push_back(collision);
+				LOG("Collision recorded at (%.1f, %.1f)", collision.x, collision.y);
+			}
+		}
 	}
 	
 	void EndContact(b2Contact* contact) override
@@ -78,7 +103,7 @@ bool ModulePhysics::Init()
 	}
 	
 	// Set up contact listener for collision callbacks
-	contactListener = new PhysicsContactListener();
+	contactListener = new PhysicsContactListener(this);
 	world->SetContactListener(contactListener);
 	
 	// Create ground body for mouse joint
@@ -100,6 +125,9 @@ update_status ModulePhysics::PreUpdate()
 {
 	if (!world)
 		return UPDATE_CONTINUE;
+	
+	// Clear previous collision data for debug visualization
+	activeCollisions.clear();
 	
 	// Step the physics simulation
 	// Note: Using fixed timestep (1/60th of a second)
@@ -643,6 +671,25 @@ void ModulePhysics::DebugDraw()
 		       }
 	       }
        }
+
+       // Draw active collision points and normals
+       for (const CollisionInfo& collision : activeCollisions)
+       {
+	       // Draw collision point as a red circle
+	       DrawCircle((int)collision.x, (int)collision.y, 3, RED);
+	       
+	       // Draw collision normal as a yellow line
+	       float normalLength = 20.0f;
+	       float endX = collision.x + collision.normalX * normalLength;
+	       float endY = collision.y + collision.normalY * normalLength;
+	       DrawLine((int)collision.x, (int)collision.y, (int)endX, (int)endY, YELLOW);
+	       
+	       // Draw separation indicator (green if separating, red if penetrating)
+	       Color sepColor = (collision.separation > 0) ? GREEN : RED;
+	       float sepX = collision.x + collision.normalX * collision.separation * 10.0f;
+	       float sepY = collision.y + collision.normalY * collision.separation * 10.0f;
+	       DrawCircle((int)sepX, (int)sepY, 2, sepColor);
+       }
 #endif // NDEBUG
 }
 
@@ -693,6 +740,12 @@ void ModulePhysics::RenderDebug()
 		DrawText(TextFormat("Car Pos: (%.1f, %.1f)", carX, carY), overlayX + 10, overlayY + 130, 20, YELLOW);
 	} else {
 		DrawText("Car Pos: (N/A)", overlayX + 10, overlayY + 130, 20, GRAY);
+	}
+
+	// Active collisions count
+	if (App && App->physics) {
+		int collisionCount = App->physics->GetActiveCollisionCount();
+		DrawText(TextFormat("Collisions: %d", collisionCount), overlayX + 10, overlayY + 150, 20, collisionCount > 0 ? RED : GREEN);
 	}
 
 	// Draw mouse joint line when dragging

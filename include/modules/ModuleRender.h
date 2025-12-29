@@ -4,6 +4,13 @@
 
 #include <limits.h>
 
+// Camera view modes for different viewing options
+enum CameraViewMode
+{
+	CAMERA_FOLLOW_CAR,    // Camera follows the car with rotation
+	CAMERA_FULL_MAP       // Camera shows the full map without rotation
+};
+
 // ModuleRender: Handles all drawing operations
 // NOTE: All textures should be loaded via ModuleResources (App->resources->LoadTexture())
 // This module only handles drawing, NOT resource management
@@ -26,8 +33,10 @@ public:
 
 private:
 	void UpdateCamera();
+	void HandleCameraInput();
 
 public:
 	Color background;
 	Camera2D camera;
+	CameraViewMode cameraMode;
 };

@@ -10,6 +10,14 @@ class b2World;
 class b2Body;
 class b2ContactListener;
 
+// Structure to store collision information for debug visualization
+struct CollisionInfo
+{
+	float x, y;           // Collision point in world coordinates (pixels)
+	float normalX, normalY; // Collision normal
+	float separation;     // Penetration depth
+};
+
 // ModulePhysics: Complete wrapper for Box2D physics engine
 // This module encapsulates ALL Box2D functionality
 // CRITICAL: Game code should NEVER include box2d.h or use b2* types directly
@@ -108,7 +116,8 @@ public:
 
 	// Public method to render physics debug visualization
 	void DebugDraw();
-
+	// Get number of active collisions for debug display
+	int GetActiveCollisionCount() const { return (int)activeCollisions.size(); }
 private:
 	// Box2D world
 	b2World* world;
@@ -118,6 +127,9 @@ private:
 	
 	// All physics bodies created by this module
 	std::vector<PhysBody*> bodies;
+	
+	// Active collisions for debug visualization
+	std::vector<CollisionInfo> activeCollisions;
 	
 	// Mouse joint for debug dragging
 	class b2MouseJoint* mouseJoint;

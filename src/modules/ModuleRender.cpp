@@ -16,6 +16,7 @@ ModuleRender::ModuleRender(Application* app, bool start_enabled) : Module(app, s
     camera.offset = { (float)SCREEN_WIDTH * 0.5f, (float)SCREEN_HEIGHT * 0.5f };
     camera.rotation = 0.0f;
     camera.zoom = 1.0f;
+    cameraMode = CAMERA_FOLLOW_CAR;  // Start with car-following mode
 }
 
 ModuleRender::~ModuleRender()
@@ -42,6 +43,9 @@ update_status ModuleRender::PreUpdate()
 
 update_status ModuleRender::Update()
 {
+    // Handle camera mode switching input
+    HandleCameraInput();
+    
     // Update camera position to follow player BEFORE drawing anything
     UpdateCamera();
 
@@ -93,21 +97,70 @@ void ModuleRender::SetBackgroundColor(Color color)
     background = color;
 }
 
+void ModuleRender::HandleCameraInput()
+{
+    // Toggle camera mode with C key
+    if (IsKeyPressed(KEY_C))
+    {
+        if (cameraMode == CAMERA_FOLLOW_CAR)
+        {
+            cameraMode = CAMERA_FULL_MAP;
+            LOG("Camera mode: Full Map View");
+        }
+        else
+        {
+            cameraMode = CAMERA_FOLLOW_CAR;
+            LOG("Camera mode: Follow Car");
+        }
+    }
+}
+
 void ModuleRender::UpdateCamera()
 {
-    if (!App || !App->player || !App->player->GetCar())
+    if (!App)
         return;
 
-    // Get player car position and rotation
-    float playerX, playerY;
-    App->player->GetCar()->GetPosition(playerX, playerY);
-    float playerRotation = App->player->GetCar()->GetRotation();
+    if (cameraMode == CAMERA_FOLLOW_CAR)
+    {
+        // Follow car mode - existing behavior
+        if (!App->player || !App->player->GetCar())
+            return;
 
-    // Set camera target to player position
-    camera.target = { playerX, playerY };
+        // Get player car position and rotation
+        float playerX, playerY;
+        App->player->GetCar()->GetPosition(playerX, playerY);
+        float playerRotation = App->player->GetCar()->GetRotation();
 
-    // Set camera rotation to match player car rotation (negated for correct direction)
-    camera.rotation = -playerRotation;
+        // Set camera target to player position
+        camera.target = { playerX, playerY };
+
+        // Set camera rotation to match player car rotation (negated for correct direction)
+        camera.rotation = -playerRotation;
+        
+        // Reset zoom to normal
+        camera.zoom = 1.0f;
+    }
+    else if (cameraMode == CAMERA_FULL_MAP)
+    {
+        // Full map mode - show entire map
+        // Map dimensions: 2750x1680 pixels
+        // Screen dimensions: 1280x720 pixels
+        
+        // Center camera on map center
+        camera.target = { 2750.0f * 0.5f, 1680.0f * 0.5f };
+        
+        // No rotation in full map mode
+        camera.rotation = 0.0f;
+        
+        // Calculate zoom to fit entire map
+        // Use the dimension that requires more zoom reduction
+        float zoomX = SCREEN_WIDTH / 2750.0f;
+        float zoomY = SCREEN_HEIGHT / 1680.0f;
+        camera.zoom = (zoomX < zoomY) ? zoomX : zoomY;
+        
+        // Add some margin (95% of calculated zoom)
+        camera.zoom *= 0.95f;
+    }
 }
 
 // Draw to screen
