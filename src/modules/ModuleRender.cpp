@@ -61,7 +61,7 @@ update_status ModuleRender::Update()
     }
 
     // Render physics debug visualization within camera space
-    if (App && App->physics)
+    if (App && App->physics && App->physics->IsDebugMode())
     {
         App->physics->DebugDraw();
     }
@@ -74,7 +74,7 @@ update_status ModuleRender::PostUpdate()
     EndMode2D();
 
     // Render physics debug overlay in screen space (after camera transformations)
-    if (App && App->physics)
+    if (App && App->physics && App->physics->IsDebugMode())
     {
         App->physics->RenderDebug();
     }

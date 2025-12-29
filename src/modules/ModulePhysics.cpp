@@ -568,12 +568,13 @@ void ModulePhysics::DebugDraw()
 			       {
 				       b2CircleShape* shape = (b2CircleShape*)f->GetShape();
 				       b2Vec2 pos = b->GetPosition();
-				       Vector2 screenPos = GetWorldToScreen2D({pos.x * METERS_TO_PIXELS, pos.y * METERS_TO_PIXELS}, App->renderer->camera);
+				       float px = pos.x * METERS_TO_PIXELS;
+				       float py = pos.y * METERS_TO_PIXELS;
 				       float radius = shape->m_radius * METERS_TO_PIXELS;
-				       DrawCircleLines((int)screenPos.x, (int)screenPos.y, radius, color);
+				       DrawCircleLines((int)px, (int)py, radius, color);
 				       // Draw position cross
-				       DrawLine((int)screenPos.x-5, (int)screenPos.y, (int)screenPos.x+5, (int)screenPos.y, YELLOW);
-				       DrawLine((int)screenPos.x, (int)screenPos.y-5, (int)screenPos.x, (int)screenPos.y+5, YELLOW);
+				       DrawLine((int)px-5, (int)py, (int)px+5, (int)py, YELLOW);
+				       DrawLine((int)px, (int)py-5, (int)px, (int)py+5, YELLOW);
 			       }
 			       break;
 
@@ -582,21 +583,26 @@ void ModulePhysics::DebugDraw()
 			       {
 				       b2PolygonShape* polygonShape = (b2PolygonShape*)f->GetShape();
 				       int32 count = polygonShape->m_count;
-				       Vector2 prevScreen, vScreen;
+				       b2Vec2 prev, v;
 				       for (int32 i = 0; i < count; ++i)
 				       {
-					       b2Vec2 v = b->GetWorldPoint(polygonShape->m_vertices[i]);
-					       vScreen = GetWorldToScreen2D({v.x * METERS_TO_PIXELS, v.y * METERS_TO_PIXELS}, App->renderer->camera);
+					       v = b->GetWorldPoint(polygonShape->m_vertices[i]);
 					       if (i > 0)
 					       {
-						       DrawLine((int)prevScreen.x, (int)prevScreen.y, (int)vScreen.x, (int)vScreen.y, color);
+						       float x1 = prev.x * METERS_TO_PIXELS;
+						       float y1 = prev.y * METERS_TO_PIXELS;
+						       float x2 = v.x * METERS_TO_PIXELS;
+						       float y2 = v.y * METERS_TO_PIXELS;
+						       DrawLine((int)x1, (int)y1, (int)x2, (int)y2, color);
 					       }
-					       prevScreen = vScreen;
+					       prev = v;
 				       }
-				       // Close the polygon
-				       b2Vec2 firstV = b->GetWorldPoint(polygonShape->m_vertices[0]);
-				       Vector2 firstScreen = GetWorldToScreen2D({firstV.x * METERS_TO_PIXELS, firstV.y * METERS_TO_PIXELS}, App->renderer->camera);
-				       DrawLine((int)prevScreen.x, (int)prevScreen.y, (int)firstScreen.x, (int)firstScreen.y, color);
+				       v = b->GetWorldPoint(polygonShape->m_vertices[0]);
+				       float x1 = prev.x * METERS_TO_PIXELS;
+				       float y1 = prev.y * METERS_TO_PIXELS;
+				       float x2 = v.x * METERS_TO_PIXELS;
+				       float y2 = v.y * METERS_TO_PIXELS;
+				       DrawLine((int)x1, (int)y1, (int)x2, (int)y2, color);
 			       }
 			       break;
 
@@ -604,16 +610,19 @@ void ModulePhysics::DebugDraw()
 			       case b2Shape::e_chain:
 			       {
 				       b2ChainShape* shape = (b2ChainShape*)f->GetShape();
-				       Vector2 prevScreen, vScreen;
+				       b2Vec2 prev, v;
 				       for (int32 i = 0; i < shape->m_count; ++i)
 				       {
-					       b2Vec2 v = b->GetWorldPoint(shape->m_vertices[i]);
-					       vScreen = GetWorldToScreen2D({v.x * METERS_TO_PIXELS, v.y * METERS_TO_PIXELS}, App->renderer->camera);
+					       v = b->GetWorldPoint(shape->m_vertices[i]);
 					       if (i > 0)
 					       {
-						       DrawLine((int)prevScreen.x, (int)prevScreen.y, (int)vScreen.x, (int)vScreen.y, color);
+						       float x1 = prev.x * METERS_TO_PIXELS;
+						       float y1 = prev.y * METERS_TO_PIXELS;
+						       float x2 = v.x * METERS_TO_PIXELS;
+						       float y2 = v.y * METERS_TO_PIXELS;
+						       DrawLine((int)x1, (int)y1, (int)x2, (int)y2, color);
 					       }
-					       prevScreen = vScreen;
+					       prev = v;
 				       }
 			       }
 			       break;
@@ -624,9 +633,11 @@ void ModulePhysics::DebugDraw()
 				       b2EdgeShape* shape = (b2EdgeShape*)f->GetShape();
 				       b2Vec2 v1 = b->GetWorldPoint(shape->m_vertex1);
 				       b2Vec2 v2 = b->GetWorldPoint(shape->m_vertex2);
-				       Vector2 screenV1 = GetWorldToScreen2D({v1.x * METERS_TO_PIXELS, v1.y * METERS_TO_PIXELS}, App->renderer->camera);
-				       Vector2 screenV2 = GetWorldToScreen2D({v2.x * METERS_TO_PIXELS, v2.y * METERS_TO_PIXELS}, App->renderer->camera);
-				       DrawLine((int)screenV1.x, (int)screenV1.y, (int)screenV2.x, (int)screenV2.y, color);
+				       float x1 = v1.x * METERS_TO_PIXELS;
+				       float y1 = v1.y * METERS_TO_PIXELS;
+				       float x2 = v2.x * METERS_TO_PIXELS;
+				       float y2 = v2.y * METERS_TO_PIXELS;
+				       DrawLine((int)x1, (int)y1, (int)x2, (int)y2, color);
 			       }
 			       break;
 		       }
@@ -682,6 +693,16 @@ void ModulePhysics::RenderDebug()
 		DrawText(TextFormat("Car Pos: (%.1f, %.1f)", carX, carY), overlayX + 10, overlayY + 130, 20, YELLOW);
 	} else {
 		DrawText("Car Pos: (N/A)", overlayX + 10, overlayY + 130, 20, GRAY);
+	}
+
+	// Draw mouse joint line when dragging
+	if (mouseJoint && draggedBody && IsMouseButtonDown(MOUSE_LEFT_BUTTON))
+	{
+		float x, y;
+		draggedBody->GetPositionF(x, y);
+		Vector2 screenBodyPos = GetWorldToScreen2D({x, y}, App->renderer->camera);
+		Vector2 mousePos = GetMousePosition();
+		DrawLine((int)screenBodyPos.x, (int)screenBodyPos.y, (int)mousePos.x, (int)mousePos.y, RED);
 	}
 #endif // NDEBUG
 }
@@ -748,15 +769,6 @@ void ModulePhysics::HandleMouseJoint()
 	if (mouseJoint && IsMouseButtonDown(MOUSE_LEFT_BUTTON))
 	{
 		mouseJoint->SetTarget(b2Vec2(worldMousePos.x * PIXELS_TO_METERS, worldMousePos.y * PIXELS_TO_METERS));
-
-		// Draw joint line (optional) - convert world coordinates back to screen for drawing
-		if (draggedBody)
-		{
-			float x, y;
-			draggedBody->GetPositionF(x, y);
-			Vector2 screenBodyPos = GetWorldToScreen2D({x, y}, App->renderer->camera);
-			DrawLine((int)screenBodyPos.x, (int)screenBodyPos.y, (int)mousePos.x, (int)mousePos.y, RED);
-		}
 	}
 
 	// Release joint on mouse release
