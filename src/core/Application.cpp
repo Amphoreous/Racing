@@ -1,5 +1,4 @@
-
-#include "core/Module.h"
+﻿#include "core/Module.h"
 #include "modules/ModuleWindow.h"
 #include "modules/ModuleRender.h"
 #include "modules/ModuleAudio.h"
@@ -7,6 +6,7 @@
 #include "modules/ModuleGame.h"
 #include "modules/ModuleResources.h"
 #include "entities/Player.h"
+#include "core/Map.h"
 
 #include "core/Application.h"
 
@@ -14,6 +14,7 @@ Application::Application()
 {
 	window = new ModuleWindow(this);
 	resources = new ModuleResources(this, true);
+	map = new Map(this, true);
 	scene_intro = new ModuleGame(this);
 	audio = new ModuleAudio(this, true);
 	physics = new ModulePhysics(this);
@@ -25,9 +26,10 @@ Application::Application()
 	AddModule(resources);  // Load resources early
 	AddModule(scene_intro); // Game scene (background)
 	AddModule(audio);
+	AddModule(map);        
 	AddModule(player);     // Player car
 	AddModule(physics);    // Physics debug render - on top of car
-	AddModule(renderer);   // Draw last
+	AddModule(renderer);   
 }
 
 Application::~Application()
@@ -38,7 +40,6 @@ Application::~Application()
 		delete item;
 	}
 	list_modules.clear();
-	
 }
 
 bool Application::Init()
@@ -60,7 +61,7 @@ bool Application::Init()
 		Module* module = *it;
 		ret = module->Start();
 	}
-	
+
 	return ret;
 }
 
@@ -109,7 +110,7 @@ bool Application::CleanUp()
 		Module* item = *it;
 		ret = item->CleanUp();
 	}
-	
+
 	return ret;
 }
 

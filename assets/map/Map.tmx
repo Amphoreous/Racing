@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="2750" height="1680" tilewidth="1" tileheight="1" infinite="0" nextlayerid="5" nextobjectid="9">
+<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="2750" height="1680" tilewidth="1" tileheight="1" infinite="0" nextlayerid="6" nextobjectid="15">
  <imagelayer id="2" name="Map" offsetx="-4" offsety="-156">
   <image source="Map.png" width="2750" height="2000"/>
  </imagelayer>
@@ -21,6 +21,33 @@
   </object>
   <object id="6" name="Mud" type="Mud" x="2720" y="1285">
    <polygon points="0,0 -1,133 -15,247 -31,286 -65,323 -128,351 -210,361 -1200.7,364.768 -827.979,192.577 -711.321,182.245 -418.56,179.49 -389.629,148.492 -351.742,134.715 -347.609,122.316 -315.042,108.661 -315.827,101.96"/>
+  </object>
+ </objectgroup>
+ <objectgroup id="5" name="Checkpoints">
+  <object id="9" name="C1" x="1400" y="875.333" width="40" height="240.667">
+   <properties>
+    <property name="Order" type="int" value="1"/>
+   </properties>
+  </object>
+  <object id="10" name="C2" x="1628" y="260" width="436" height="36">
+   <properties>
+    <property name="Order" type="int" value="2"/>
+   </properties>
+  </object>
+  <object id="12" name="C3" x="6" y="242" width="406" height="52">
+   <properties>
+    <property name="Order" type="int" value="3"/>
+   </properties>
+  </object>
+  <object id="13" name="C4" x="822" y="1386" width="44" height="288">
+   <properties>
+    <property name="Order" type="int" value="4"/>
+   </properties>
+  </object>
+  <object id="14" name="C5" x="2350" y="1198" width="390" height="48">
+   <properties>
+    <property name="Order" type="int" value="5"/>
+   </properties>
   </object>
  </objectgroup>
  <objectgroup id="4" name="Positions">

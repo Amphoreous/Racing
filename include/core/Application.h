@@ -12,6 +12,7 @@ class ModulePhysics;
 class ModuleGame;
 class ModuleResources;
 class ModulePlayer;
+class Map;
 
 class Application
 {
@@ -24,11 +25,12 @@ public:
 	ModuleGame* scene_intro;
 	ModuleResources* resources;
 	ModulePlayer* player;
+	Map* map;
 
 private:
 
 	std::vector<Module*> list_modules;
-    uint64 frame_count = 0;
+	uint64 frame_count = 0;
 
 	Timer ptimer;
 	Timer startup_time;

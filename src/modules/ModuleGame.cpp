@@ -1,4 +1,4 @@
-#include "core/Globals.h"
+﻿#include "core/Globals.h"
 #include "core/Application.h"
 #include "modules/ModuleRender.h"
 #include "modules/ModuleGame.h"
@@ -37,11 +37,10 @@ void ModuleGame::LoadGameTextures()
 {
 	LOG("Loading game textures through resource manager...");
 
-	// Load the main background for static screen rendering
 	backgroundTexture = App->resources->LoadTexture("assets/ui/backgrounds/main_background.jpg");
 	if (backgroundTexture.id != 0)
 	{
-		LOG("Main background loaded successfully for static screen rendering");
+		LOG("Main background loaded successfully for background rendering");
 	}
 	else
 	{
@@ -129,10 +128,8 @@ update_status ModuleGame::Update()
 // Post-update: Render everything (called after BeginDrawing)
 update_status ModuleGame::PostUpdate()
 {
-	// Render the tiled background first (behind everything else)
 	RenderTiledBackground();
-	
-	// Render all game elements
+
 	RenderGameElements();
 
 	return UPDATE_CONTINUE;
