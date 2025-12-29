@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="5500" height="3360" tilewidth="1" tileheight="1" infinite="0" nextlayerid="11" nextobjectid="31">
+<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="5500" height="3360" tilewidth="1" tileheight="1" infinite="0" nextlayerid="11" nextobjectid="34">
  <imagelayer id="2" name="Map" offsetx="-13.0303" offsety="-331.394">
   <image source="map.png" width="5500" height="4000"/>
  </imagelayer>
@@ -59,6 +59,25 @@
   </object>
  </objectgroup>
  <objectgroup id="4" name="Positions" offsetx="1664" offsety="984">
-  <object id="7" name="Start" type="Start" x="1569.83" y="1000.06"/>
+  <object id="7" name="Start" type="Start" x="2101.83" y="912.06">
+   <properties>
+    <property name="Name" value="NPC3"/>
+   </properties>
+  </object>
+  <object id="31" name="Start" type="Start" x="1538.67" y="910.667">
+   <properties>
+    <property name="Name" value="NPC1"/>
+   </properties>
+  </object>
+  <object id="32" name="Start" type="Start" x="2420" y="1082.67">
+   <properties>
+    <property name="Name" value="Player"/>
+   </properties>
+  </object>
+  <object id="33" name="Start" type="Start" x="1789.33" y="1073.33">
+   <properties>
+    <property name="Name" value="NPC2"/>
+   </properties>
+  </object>
  </objectgroup>
 </map>

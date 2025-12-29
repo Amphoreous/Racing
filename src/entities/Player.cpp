@@ -26,21 +26,63 @@ bool ModulePlayer::Start()
 		return false;
 	}
 
-	// Set starting position from map
-	MapObject* startPos = App->map->GetObjectByName("Start");
+	// CRITICAL: Get starting position from Tiled map
+	// The "Start" object with Name="Player" is in the "Positions" layer
+	// Layer offset: offsetx="1664" offsety="984"
+
+	// Find the Start object with Name property = "Player"
+	MapObject* startPos = nullptr;
+	for (const auto& object : App->map->mapData.objects)
+	{
+		if (object->name == "Start")
+		{
+			// Check if this object has the "Name" property set to "Player"
+			Properties::Property* nameProp = object->properties.GetProperty("Name");
+			if (nameProp && nameProp->value == "Player")
+			{
+				startPos = object;
+				break;
+			}
+		}
+	}
+
 	if (startPos)
 	{
-		playerCar->SetPosition((float)startPos->x, (float)startPos->y);
+		// CRITICAL FIX: The "Positions" layer in Tiled has an offset!
+		// offsetx="1664" offsety="984" (from Map.tmx)
+		// We need to ADD this offset to the object's position
+		const float POSITIONS_LAYER_OFFSET_X = 1664.0f;
+		const float POSITIONS_LAYER_OFFSET_Y = 984.0f;
+
+		// Apply layer offset to get world coordinates
+		float worldX = (float)startPos->x + POSITIONS_LAYER_OFFSET_X;
+		float worldY = (float)startPos->y + POSITIONS_LAYER_OFFSET_Y;
+
+		LOG("Start position found at Tiled coords: (%d, %d)", startPos->x, startPos->y);
+		LOG("With layer offset applied: (%.2f, %.2f)", worldX, worldY);
+
+		// Set player car position
+		playerCar->SetPosition(worldX, worldY);
+
+		// CRITICAL: Set starting rotation
+		// Default car rotation is 90° (facing up), we need 270° (facing down)
+		// This is a 180° rotation from the default orientation
+		playerCar->SetRotation(270.0f);
+
+		LOG("Player car positioned at (%.2f, %.2f) with rotation 270°", worldX, worldY);
 	}
 	else
 	{
-		LOG("Warning: No start position found in map, using default");
+		LOG("Warning: No start position found for Player in map, using default (400, 300)");
+		// Fallback to default position
+		playerCar->SetPosition(400.0f, 300.0f);
+		playerCar->SetRotation(90.0f);  // Face up by default
 	}
 
 	// Configure player car
 	playerCar->SetColor(BLUE);
 	playerCar->SetMaxSpeed(800.0f);
-	playerCar->SetReverseSpeed(400.0f);  // Set reverse speed
+	playerCar->SetReverseSpeed(400.0f);
 
 	LOG("Player car created successfully");
 	return true;
