@@ -34,7 +34,7 @@ bool ModuleAudio::Init()
 
 update_status ModuleAudio::Update()
 {
-	// CRITICAL: Update music stream every frame (required for music playback)
+	// Update music stream every frame (required for music playback)
 	if (IsMusicValid(music))
 	{
 		UpdateMusicStream(music);
@@ -81,7 +81,7 @@ bool ModuleAudio::PlayMusic(const char* path, float fade_time)
 		return false;
 	}
 
-	// CRITICAL: Enable looping for the music
+	// Enable looping for the music
 	music.looping = true;
 
 	PlayMusicStream(music);

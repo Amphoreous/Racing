@@ -29,6 +29,20 @@ bool CheckpointManager::Start()
 {
 	LOG("Initializing Checkpoint Manager");
 
+	// CRITICAL: Clean up existing data before re-initialization
+	// This prevents memory leaks when Start() is called multiple times (Enable/Disable cycles)
+	if (!checkpoints.empty())
+	{
+		LOG("Checkpoint data exists - cleaning up before re-initialization");
+		checkpoints.clear();
+		finishLine = nullptr;
+	}
+	
+	// Reset race state
+	currentLap = 1;
+	nextCheckpointOrder = 1;
+	raceFinished = false;
+
 	if (App->player && App->player->GetCar())
 	{
 		playerBody = App->player->GetCar()->GetPhysBody();
