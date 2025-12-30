@@ -72,6 +72,7 @@ private:
 	TerrainType currentTerrain;
 	float terrainFrictionModifier;
 	float terrainAccelerationModifier;
+	float terrainSpeedModifier;  // NEW: Separate modifier for max speed
 
 	// Helper methods
 	void ApplyFriction();
@@ -79,7 +80,7 @@ private:
 	void ApplyDownforce();
 	vec2f GetForwardVector() const;
 	vec2f GetRightVector() const;
-	
+
 	// Terrain detection
 	bool IsPointInPolygon(float px, float py, const std::vector<vec2i>& points, float offsetX, float offsetY) const;
 };

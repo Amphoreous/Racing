@@ -34,6 +34,7 @@ Car::Car(Application* app)
 	, currentTerrain(NORMAL)
 	, terrainFrictionModifier(1.0f)
 	, terrainAccelerationModifier(1.0f)
+	, terrainSpeedModifier(1.0f)  // Initialize speed modifier
 {
 }
 
@@ -336,8 +337,9 @@ void Car::ClampSpeed()
 	vec2f forward = GetForwardVector();
 	float forwardDot = vx * forward.x + vy * forward.y;
 
-	// Clamp based on direction
-	float speedLimit = (forwardDot >= 0.0f) ? maxSpeed : reverseMaxSpeed;
+	// Clamp based on direction with terrain speed modifier applied
+	float baseSpeedLimit = (forwardDot >= 0.0f) ? maxSpeed : reverseMaxSpeed;
+	float speedLimit = baseSpeedLimit * terrainSpeedModifier;  // Use speed modifier instead of acceleration modifier
 
 	if (speed > speedLimit)
 	{
@@ -410,7 +412,8 @@ Car::TerrainType Car::GetCurrentTerrain() const
 	for (const auto& object : app->map->mapData.objects)
 	{
 		// Only check terrain collision objects
-	if (object->type != "Mud" && object->type != "Water")
+		if (object->type != "Mud" && object->type != "Water")
+			continue;
 
 		if (object->hasPolygon && !object->polygonPoints.empty())
 		{
@@ -447,35 +450,41 @@ Car::TerrainType Car::GetCurrentTerrain() const
 void Car::UpdateTerrainEffects()
 {
 	TerrainType newTerrain = GetCurrentTerrain();
-	
+
 	if (newTerrain != currentTerrain)
 	{
 		currentTerrain = newTerrain;
-		
+
 		// Set terrain modifiers based on terrain type
 		switch (currentTerrain)
 		{
 		case NORMAL:
 			terrainFrictionModifier = 1.0f;
 			terrainAccelerationModifier = 1.0f;
+			terrainSpeedModifier = 1.0f;
 			break;
 		case MUD:
-			terrainFrictionModifier = 0.8f;  // Slightly slippery
-			terrainAccelerationModifier = 0.9f;  // Good acceleration
+			terrainFrictionModifier = 0.95f;  // Ligeramente más fricción para frenar gradualmente
+			terrainAccelerationModifier = 0.7f;  // Aceleración reducida al 70%
+			terrainSpeedModifier = 0.6f;  // Velocidad máxima reducida al 60%
 			// Add screen shake for rough terrain
-			if (app && app->renderer) app->renderer->AddScreenShake(5.0f);
+			if (app && app->renderer) app->renderer->AddScreenShake(3.0f);
 			break;
 		case WATER:
-			terrainFrictionModifier = 0.4f;  // Slippery but controllable
-			terrainAccelerationModifier = 0.6f;  // Harder to accelerate but manageable
+			terrainFrictionModifier = 0.99f;  // CASI SIN FRICCIÓN = mantiene velocidad + derrape natural
+			terrainAccelerationModifier = 1.5f;  // Aceleración aumentada al 115%
+			terrainSpeedModifier = 2.0f;  // Velocidad máxima AUMENTADA al 130% = MUCHO MÁS RÁPIDO
 			// Add screen shake for splash
 			if (app && app->renderer) app->renderer->AddScreenShake(3.0f);
 			break;
 		}
-		
-		LOG("Car entered %s terrain", 
-			currentTerrain == NORMAL ? "NORMAL" : 
-			currentTerrain == MUD ? "MUD" : "WATER");
+
+		LOG("Car entered %s terrain (Speed: %.0f%%, Accel: %.0f%%, Friction: %.0f%%)",
+			currentTerrain == NORMAL ? "NORMAL" :
+			currentTerrain == MUD ? "MUD" : "WATER",
+			terrainSpeedModifier * 100.0f,
+			terrainAccelerationModifier * 100.0f,
+			terrainFrictionModifier * 100.0f);
 	}
 }
 
