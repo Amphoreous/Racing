@@ -7,6 +7,7 @@
 #include "modules/ModulePhysics.h"
 #include "entities/Player.h"
 #include "entities/Car.h"
+#include "entities/CheckpointManager.h"
 #include <math.h>
 
 ModuleRender::ModuleRender(Application* app, bool start_enabled) : Module(app, start_enabled)
@@ -100,6 +101,12 @@ update_status ModuleRender::PostUpdate()
     if (App && App->physics && App->physics->IsDebugMode())
     {
         App->physics->RenderDebug();
+    }
+
+    // Render win screen in screen space (covers everything)
+    if (App && App->checkpointManager && App->checkpointManager->IsRaceFinished())
+    {
+        App->checkpointManager->DrawWinScreen();
     }
 
     EndDrawing();

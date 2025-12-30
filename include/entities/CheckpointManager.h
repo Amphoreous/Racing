@@ -2,6 +2,7 @@
 
 #include "core/Module.h"
 #include "entities/PhysBody.h"
+#include "raylib.h"
 #include <vector>
 #include <string>
 
@@ -44,6 +45,9 @@ public:
 	int GetCrossedCheckpointsCount() const;
 	bool GetCheckpointPosition(int order, float& x, float& y) const;
 
+	// Win screen rendering (called from ModuleRender in screen space)
+	void DrawWinScreen();
+
 private:
 	// Checkpoint data
 	std::vector<Checkpoint> checkpoints;
@@ -61,6 +65,10 @@ private:
 
 	// Sound effects
 	unsigned int lapCompleteSfxId;
+
+	// Win screen
+	Texture2D winBackground;
+	bool winBackgroundLoaded;
 
 	// Helper methods
 	void LoadCheckpointsFromMap();

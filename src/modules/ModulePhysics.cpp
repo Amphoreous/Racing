@@ -86,7 +86,7 @@ ModulePhysics::ModulePhysics(Application* app, bool start_enabled) : Module(app,
 {
 	world = nullptr;
 	contactListener = nullptr;
-	debugMode = true;
+	debugMode = false;
 	mouseJoint = nullptr;
 	draggedBody = nullptr;
 	groundBody = nullptr;

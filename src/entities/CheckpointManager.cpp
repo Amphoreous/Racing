@@ -3,7 +3,9 @@
 #include "core/Map.h"
 #include "modules/ModulePhysics.h"
 #include "modules/ModuleAudio.h"
+#include "modules/ModuleResources.h"
 #include "entities/Player.h"
+#include "entities/NPCManager.h"
 #include "entities/Car.h"
 #include "raylib.h"
 #include <algorithm>
@@ -18,6 +20,8 @@ CheckpointManager::CheckpointManager(Application* app, bool start_enabled)
 	, raceFinished(false)
 	, playerBody(nullptr)
 	, lapCompleteSfxId(0)
+	, winBackground({0})
+	, winBackgroundLoaded(false)
 {
 }
 
@@ -73,52 +77,92 @@ update_status CheckpointManager::Update()
 {
 	if (raceFinished)
 	{
-		LOG("=== RACE FINISHED! ===");
-		LOG("Player completed %d laps!", totalLaps);
-		return UPDATE_STOP;
+		// Freeze all game updates by disabling game modules
+		if (App->player && App->player->IsEnabled())
+		{
+			App->player->Disable();
+		}
+		if (App->npcManager && App->npcManager->IsEnabled())
+		{
+			App->npcManager->Disable();
+		}
+		if (App->physics && App->physics->IsEnabled())
+		{
+			App->physics->Disable();
+		}
 	}
-
 	return UPDATE_CONTINUE;
 }
 
 update_status CheckpointManager::PostUpdate()
 {
-	if (raceFinished)
+	// Win screen is now drawn by ModuleRender::PostUpdate() in screen space
+	// Just load the texture here if needed
+	if (raceFinished && !winBackgroundLoaded)
 	{
-		DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, Fade(BLACK, 0.7f));
-
-		const char* victoryText = "RACE COMPLETE!";
-		const char* lapsText = TextFormat("Completed %d laps!", totalLaps);
-		const char* exitText = "Press ESC to exit";
-
-		int titleFontSize = 60;
-		int subFontSize = 30;
-		int exitFontSize = 20;
-
-		int titleWidth = MeasureText(victoryText, titleFontSize);
-		int lapsWidth = MeasureText(lapsText, subFontSize);
-		int exitWidth = MeasureText(exitText, exitFontSize);
-
-		DrawText(victoryText,
-			SCREEN_WIDTH / 2 - titleWidth / 2,
-			SCREEN_HEIGHT / 2 - 60,
-			titleFontSize,
-			GOLD);
-
-		DrawText(lapsText,
-			SCREEN_WIDTH / 2 - lapsWidth / 2,
-			SCREEN_HEIGHT / 2 + 20,
-			subFontSize,
-			WHITE);
-
-		DrawText(exitText,
-			SCREEN_WIDTH / 2 - exitWidth / 2,
-			SCREEN_HEIGHT / 2 + 80,
-			exitFontSize,
-			GRAY);
+		winBackground = App->resources->LoadTexture("assets/ui/backgrounds/second_background.png");
+		winBackgroundLoaded = true;
 	}
 
 	return UPDATE_CONTINUE;
+}
+
+void CheckpointManager::DrawWinScreen()
+{
+	// First draw a solid black rectangle to cover EVERYTHING
+	DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, BLACK);
+
+	// Draw background fullscreen
+	if (winBackgroundLoaded)
+	{
+		Rectangle source = {0, 0, (float)winBackground.width, (float)winBackground.height};
+		Rectangle dest = {0, 0, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT};
+		Vector2 origin = {0, 0};
+		DrawTexturePro(winBackground, source, dest, origin, 0, WHITE);
+	}
+
+	// Semi-transparent overlay
+	DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, Fade(BLACK, 0.4f));
+
+	// Draw "YOU WIN!!" text
+	const char* winText = "YOU WIN!!";
+	int winFontSize = 80;
+	int winWidth = MeasureText(winText, winFontSize);
+	DrawText(winText,
+		SCREEN_WIDTH / 2 - winWidth / 2,
+		SCREEN_HEIGHT / 2 - 120,
+		winFontSize,
+		GOLD);
+
+	// Draw position text
+	const char* positionText = "1st Place!";
+	int posFontSize = 50;
+	int posWidth = MeasureText(positionText, posFontSize);
+	DrawText(positionText,
+		SCREEN_WIDTH / 2 - posWidth / 2,
+		SCREEN_HEIGHT / 2 - 20,
+		posFontSize,
+		WHITE);
+
+	// Draw laps completed
+	const char* lapsText = TextFormat("Completed %d laps!", totalLaps);
+	int lapsFontSize = 30;
+	int lapsWidth = MeasureText(lapsText, lapsFontSize);
+	DrawText(lapsText,
+		SCREEN_WIDTH / 2 - lapsWidth / 2,
+		SCREEN_HEIGHT / 2 + 50,
+		lapsFontSize,
+		LIGHTGRAY);
+
+	// Draw exit instructions
+	const char* exitText = "Press ESC to exit";
+	int exitFontSize = 24;
+	int exitWidth = MeasureText(exitText, exitFontSize);
+	DrawText(exitText,
+		SCREEN_WIDTH / 2 - exitWidth / 2,
+		SCREEN_HEIGHT / 2 + 120,
+		exitFontSize,
+		GRAY);
 }
 
 bool CheckpointManager::CleanUp()
@@ -128,6 +172,14 @@ bool CheckpointManager::CleanUp()
 	checkpoints.clear();
 	finishLine = nullptr;
 	playerBody = nullptr;
+
+	// Unload win background if loaded
+	if (winBackgroundLoaded)
+	{
+		App->resources->UnloadTexture("assets/ui/backgrounds/second_background.png");
+		winBackgroundLoaded = false;
+		winBackground = {0};
+	}
 
 	return true;
 }
