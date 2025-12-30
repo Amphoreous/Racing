@@ -31,18 +31,26 @@ private:
 public:
 	PhysicsContactListener(ModulePhysics* module) : physicsModule(module) {}
 	
-	void BeginContact(b2Contact* contact) override
+void BeginContact(b2Contact* contact) override
 	{
 		PhysBody* bodyA = (PhysBody*)contact->GetFixtureA()->GetBody()->GetUserData().pointer;
 		PhysBody* bodyB = (PhysBody*)contact->GetFixtureB()->GetBody()->GetUserData().pointer;
 		
+		// Call listeners (esto está bien, la lógica del juego necesita saberlo)
 		if (bodyA && bodyA->GetCollisionListener())
 			bodyA->GetCollisionListener()->OnCollisionEnter(bodyB);
 		
 		if (bodyB && bodyB->GetCollisionListener())
 			bodyB->GetCollisionListener()->OnCollisionEnter(bodyA);
 		
-		// Record collision for debug visualization
+		// FIX: NO registrar SENSORES en la lista visual de colisiones (HUD)
+		// Si A o B son sensores, no es un "choque", es un evento lógico.
+		if (contact->GetFixtureA()->IsSensor() || contact->GetFixtureB()->IsSensor())
+		{
+			return; 
+		}
+
+		// Record collision ONLY for solid objects (Debug visualization)
 		if (physicsModule && physicsModule->debugMode)
 		{
 			b2WorldManifold manifold;
@@ -58,11 +66,10 @@ public:
 				collision.separation = manifold.separations[i];
 				
 				physicsModule->activeCollisions.push_back(collision);
-				LOG("Collision recorded at (%.1f, %.1f)", collision.x, collision.y);
 			}
 		}
 	}
-	
+
 	void EndContact(b2Contact* contact) override
 	{
 		PhysBody* bodyA = (PhysBody*)contact->GetFixtureA()->GetBody()->GetUserData().pointer;
@@ -135,6 +142,7 @@ update_status ModulePhysics::PreUpdate()
 	// Note: Using fixed timestep (1/60th of a second)
 	float timeStep = 1.0f / 60.0f;
 	world->Step(timeStep, VELOCITY_ITERATIONS, POSITION_ITERATIONS);
+	activeCollisions.clear();
 	
 	return UPDATE_CONTINUE;
 }
@@ -296,7 +304,7 @@ PhysBody* ModulePhysics::CreateRectangle(float x, float y, float width, float he
 	fixtureDef.shape = &shape;
 	fixtureDef.density = 1.0f;
 	fixtureDef.friction = 0.3f;
-	fixtureDef.restitution = 0.3f;
+	fixtureDef.restitution = 0.1f;
 	
 	b2body->CreateFixture(&fixtureDef);
 	
@@ -509,16 +517,25 @@ class RaycastCallback : public b2RayCastCallback
 public:
 	RaycastCallback() : hit(false), body(nullptr), fraction(1.0f) {}
 	
-	float ReportFixture(b2Fixture* fixture, const b2Vec2& point, const b2Vec2& normal, float fraction) override
+float ReportFixture(b2Fixture* fixture, const b2Vec2& point, const b2Vec2& normal, float fraction) override
 	{
+		// FIX: Si el objeto es un sensor (Checkpoint, Zona, etc.), lo ignoramos.
+		// Devolvemos -1 para decirle a Box2D que continúe buscando más allá de este objeto.
+		if (fixture->IsSensor())
+		{
+			return -1.0f; 
+		}
+
 		this->hit = true;
 		this->point = point;
 		this->normal = normal;
 		this->fraction = fraction;
 		this->body = (PhysBody*)fixture->GetBody()->GetUserData().pointer;
+		
+		// Devolvemos 'fraction' para cortar el rayo aquí (encontramos una pared sólida)
 		return fraction;
 	}
-	
+
 	bool hit;
 	PhysBody* body;
 	b2Vec2 point;
