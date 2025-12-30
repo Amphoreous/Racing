@@ -21,12 +21,20 @@ bool ModuleAudio::Init()
 {
 	LOG("Initializing audio system");
 	InitAudioDevice();
+
+	if (!IsAudioDeviceReady())
+	{
+		LOG("ERROR: Audio device failed to initialize!");
+		return false;
+	}
+
+	LOG("Audio device initialized successfully");
 	return true;
 }
 
 update_status ModuleAudio::Update()
 {
-	// Update music stream (required for music to play and loop)
+	// CRITICAL: Update music stream every frame (required for music playback)
 	if (IsMusicValid(music))
 	{
 		UpdateMusicStream(music);
@@ -38,6 +46,13 @@ update_status ModuleAudio::Update()
 bool ModuleAudio::CleanUp()
 {
 	LOG("Shutting down audio");
+
+	// Stop and unload music if playing
+	if (IsMusicValid(music))
+	{
+		StopMusicStream(music);
+	}
+
 	// Resources are cleaned up by ModuleResources automatically
 	CloseAudioDevice();
 	return true;
@@ -66,12 +81,15 @@ bool ModuleAudio::PlayMusic(const char* path, float fade_time)
 		return false;
 	}
 
-	// Enable looping for the music
+	// CRITICAL: Enable looping for the music
 	music.looping = true;
 
 	PlayMusicStream(music);
 
-	LOG("Successfully playing %s (looping enabled)", path);
+	// Set volume for background music (lower volume so it doesn't overpower gameplay)
+	SetMusicVolume(music, 0.05f);  // 20% volume - subtle background music
+
+	LOG("Successfully playing %s (looping enabled, background volume: 0.2)", path);
 
 	return ret;
 }
