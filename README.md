@@ -150,6 +150,11 @@ This project is provided under the MIT License. See the LICENSE file for details
 
 ---
 
+## Inspiration
+Our core inspiration draws from Super Mario Galaxy, Super Mario 3D World, Mario Kart 7, Mario Kart World.
+
+All gameplay mechanics, level designs, and art assets are entirely original creations.
+
 ## Links
 - **Repository**: https://github.com/Amphoreous/Racing
 - **GitHub Project Board**: https://github.com/orgs/Amphoreous/projects/4
