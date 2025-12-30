@@ -4,6 +4,7 @@
 #include "core/Map.h"
 #include "entities/Car.h"
 #include "modules/ModulePhysics.h"
+#include "modules/ModuleAudio.h"
 #include "raylib.h"
 
 ModulePlayer::ModulePlayer(Application* app, bool start_enabled)
@@ -20,6 +21,12 @@ ModulePlayer::~ModulePlayer()
 bool ModulePlayer::Start()
 {
 	LOG("Creating player car");
+
+	// Start background music (looping)
+	if (App->audio)
+	{
+		App->audio->PlayMusic("assets/audio/music/music.wav");
+	}
 
 	// Create the player's car
 	playerCar = new Car(App);
@@ -67,10 +74,10 @@ bool ModulePlayer::Start()
 		// Set player car position
 		playerCar->SetPosition(worldX, worldY);
 
-		// Set starting rotation (270� = facing down)
+		// Set starting rotation (270° = facing down)
 		playerCar->SetRotation(270.0f);
 
-		LOG("Player car positioned at (%.2f, %.2f) with rotation 270�", worldX, worldY);
+		LOG("Player car positioned at (%.2f, %.2f) with rotation 270°", worldX, worldY);
 	}
 	else
 	{

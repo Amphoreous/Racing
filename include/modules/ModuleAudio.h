@@ -13,6 +13,7 @@ public:
 	~ModuleAudio();
 
 	bool Init();
+	update_status Update();  // NEW: Required to update music stream
 	bool CleanUp();
 
 	// Play a music file
@@ -28,5 +29,5 @@ private:
 
 	Music music;
 	Sound fx[MAX_SOUNDS];
-    unsigned int fx_count;
+	unsigned int fx_count;
 };
