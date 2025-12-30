@@ -30,12 +30,16 @@ bool ModuleWindow::Init()
 
 	if (resizable == true) flags |= FLAG_WINDOW_RESIZABLE;
 
-    if (vsync == true) flags |= FLAG_VSYNC_HINT;
+	if (vsync == true) flags |= FLAG_VSYNC_HINT;
 
-    LOG("Init raylib window");
+	LOG("Init raylib window");
 
-    SetConfigFlags(flags);
+	SetConfigFlags(flags);
 	InitWindow(width, height, TITLE);
+
+	// Set target FPS to 60
+	SetTargetFPS(60);
+	LOG("Target FPS set to 60");
 
 	return ret;
 }
@@ -43,12 +47,12 @@ bool ModuleWindow::Init()
 // Called each loop iteration
 update_status ModuleWindow::PreUpdate()
 {
-    if (WindowShouldClose()) windowEvents[WINDOW_EVENT_QUIT] = true;
-    if (IsWindowMinimized()) windowEvents[WINDOW_EVENT_HIDE] = true;
-    //if (IsWindowRestored()) windowEvents[WINDOW_EVENT_SHOW] = true;   // Not available
-    if (IsWindowResized()) windowEvents[WINDOW_EVENT_RESIZE] = true;
+	if (WindowShouldClose()) windowEvents[WINDOW_EVENT_QUIT] = true;
+	if (IsWindowMinimized()) windowEvents[WINDOW_EVENT_HIDE] = true;
+	//if (IsWindowRestored()) windowEvents[WINDOW_EVENT_SHOW] = true;   // Not available
+	if (IsWindowResized()) windowEvents[WINDOW_EVENT_RESIZE] = true;
 
-    return UPDATE_CONTINUE;
+	return UPDATE_CONTINUE;
 }
 
 update_status ModuleWindow::Update()
@@ -65,7 +69,7 @@ bool ModuleWindow::CleanUp()
 {
 	LOG("Closing window");
 
-    CloseWindow();
+	CloseWindow();
 
 	return true;
 }
@@ -82,10 +86,10 @@ uint ModuleWindow::GetWidth() const
 
 uint ModuleWindow::GetHeight() const
 {
-    return height;
+	return height;
 }
 
 bool ModuleWindow::GetWindowEvent(WindowEvent ev)
 {
-    return windowEvents[ev];
+	return windowEvents[ev];
 }

@@ -28,10 +28,9 @@ private:
 	Car* playerCar;
 	PushAbility* pushAbility;
 
-	// Car passing sound
-	Music carPassingSound;
-	bool isCarPassingPlaying;
+	// Car passing sound - CHANGED: Use Sound instead of Music
+	unsigned int carPassingSfxId;  // Sound effect ID
 
 	void HandleInput();
-	void CheckNPCPassing();  // NEW: Check if NPCs are passing
+	void CheckNPCPassing();
 };
