@@ -40,4 +40,8 @@ public:
 	Color background;
 	Camera2D camera;
 	CameraViewMode cameraMode;
+
+	// Screen shake for game feel
+	float screenShakeAmount;
+	void AddScreenShake(float amount);
 };

@@ -124,6 +124,28 @@ void Car::Draw() const
 	GetPosition(x, y);
 	float rotation = GetRotation();
 
+	// Draw particles for terrain effects
+	if (currentTerrain == MUD && GetCurrentSpeed() > 10.0f)
+	{
+		// Draw mud particles behind the car
+		for (int i = 0; i < 3; i++)
+		{
+			float offsetX = x - 10.0f + GetRandomValue(-20, 20);
+			float offsetY = y + 20.0f + GetRandomValue(-10, 10);
+			DrawRectangle(offsetX, offsetY, 4, 4, BROWN);
+		}
+	}
+	else if (currentTerrain == WATER && GetCurrentSpeed() > 5.0f)
+	{
+		// Draw water splash particles
+		for (int i = 0; i < 2; i++)
+		{
+			float offsetX = x + GetRandomValue(-15, 15);
+			float offsetY = y + GetRandomValue(-15, 15);
+			DrawCircle(offsetX, offsetY, 3, BLUE);
+		}
+	}
+
 	// Draw car (placeholder rectangle if no texture)
 	if (texture.id != 0)
 	{
@@ -388,8 +410,7 @@ Car::TerrainType Car::GetCurrentTerrain() const
 	for (const auto& object : app->map->mapData.objects)
 	{
 		// Only check terrain collision objects
-		if (object->type != "Mud" && object->type != "Water" && object->type != "Normal")
-			continue;
+	if (object->type != "Mud" && object->type != "Water")
 
 		if (object->hasPolygon && !object->polygonPoints.empty())
 		{
@@ -400,8 +421,6 @@ Car::TerrainType Car::GetCurrentTerrain() const
 					return MUD;
 				else if (object->type == "Water")
 					return WATER;
-				else if (object->type == "Normal")
-					return NORMAL;
 			}
 		}
 		else if (object->width > 0 && object->height > 0)
@@ -418,8 +437,6 @@ Car::TerrainType Car::GetCurrentTerrain() const
 					return MUD;
 				else if (object->type == "Water")
 					return WATER;
-				else if (object->type == "Normal")
-					return NORMAL;
 			}
 		}
 	}
@@ -443,12 +460,16 @@ void Car::UpdateTerrainEffects()
 			terrainAccelerationModifier = 1.0f;
 			break;
 		case MUD:
-			terrainFrictionModifier = 0.6f;  // Less slippery than before
-			terrainAccelerationModifier = 0.7f;  // Better acceleration
+			terrainFrictionModifier = 0.8f;  // Slightly slippery
+			terrainAccelerationModifier = 0.9f;  // Good acceleration
+			// Add screen shake for rough terrain
+			if (app && app->renderer) app->renderer->AddScreenShake(5.0f);
 			break;
 		case WATER:
-			terrainFrictionModifier = 0.1f;  // Very slippery
-			terrainAccelerationModifier = 0.3f;  // Much harder to accelerate
+			terrainFrictionModifier = 0.4f;  // Slippery but controllable
+			terrainAccelerationModifier = 0.6f;  // Harder to accelerate but manageable
+			// Add screen shake for splash
+			if (app && app->renderer) app->renderer->AddScreenShake(3.0f);
 			break;
 		}
 		

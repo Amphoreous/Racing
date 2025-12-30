@@ -25,4 +25,5 @@ private:
 	std::vector<Car*> npcCars;  // Three NPC cars
 
 	void CreateNPC(const char* npcName, const char* texturePath);
+	void UpdateAI(Car* npc);
 };

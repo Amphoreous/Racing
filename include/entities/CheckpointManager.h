@@ -46,7 +46,10 @@ public:
 	// Race completion
 	bool IsRaceFinished() const { return raceFinished; }
 	int GetTotalLaps() const { return totalLaps; }
-	
+
+	// Get checkpoint position by order
+	bool GetCheckpointPosition(int order, float& x, float& y) const;
+
 private:
 	std::vector<Checkpoint> checkpoints;  // All checkpoints including finish line
 	Checkpoint* finishLine;                // Quick reference to finish line

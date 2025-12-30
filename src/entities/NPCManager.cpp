@@ -2,8 +2,10 @@
 #include "core/Application.h"
 #include "core/Map.h"
 #include "entities/Car.h"
+#include "entities/CheckpointManager.h"
 #include "modules/ModuleResources.h"
 #include "raylib.h"
+#include <cmath>
 
 NPCManager::NPCManager(Application* app, bool start_enabled)
 	: Module(app, start_enabled)
@@ -29,16 +31,83 @@ bool NPCManager::Start()
 
 update_status NPCManager::Update()
 {
-	// Update all NPC cars
+	// Update all NPC cars with AI
 	for (Car* npc : npcCars)
 	{
 		if (npc)
 		{
+			UpdateAI(npc);
 			npc->Update();
 		}
 	}
 
 	return UPDATE_CONTINUE;
+}
+
+void NPCManager::UpdateAI(Car* npc)
+{
+	if (!npc || !App->checkpointManager) return;
+
+	// Get NPC position and angle
+	float npcX, npcY;
+	npc->GetPosition(npcX, npcY);
+	float npcAngle = npc->GetRotation(); // In degrees
+
+	// Get target checkpoint (next one in sequence)
+	int targetOrder = App->checkpointManager->GetNextCheckpointOrder();
+	float targetX, targetY;
+	if (!App->checkpointManager->GetCheckpointPosition(targetOrder, targetX, targetY))
+	{
+		// Fallback: use a default position if checkpoint not found
+		targetX = 2714.0f; // C1 position as example
+		targetY = 1472.0f;
+	}
+
+	// Calculate direction to target
+	float dirX = targetX - npcX;
+	float dirY = targetY - npcY;
+
+	// Desired angle (in radians first)
+	float desiredAngleRad = atan2f(dirY, dirX);
+	float desiredAngleDeg = desiredAngleRad * (180.0f / PI);
+
+	// Adjust for car coordinate system (0 degrees = up in your game)
+	desiredAngleDeg += 90.0f;
+
+	// Normalize angle to 0-360
+	while (desiredAngleDeg < 0) desiredAngleDeg += 360;
+	while (desiredAngleDeg >= 360) desiredAngleDeg -= 360;
+
+	// Calculate steering difference
+	float angleDiff = desiredAngleDeg - npcAngle;
+
+	// Normalize to -180 to 180
+	while (angleDiff <= -180) angleDiff += 360;
+	while (angleDiff > 180) angleDiff -= 360;
+
+	// Decide steering
+	float steerAmount = 0.0f;
+	if (angleDiff > 5.0f) steerAmount = 1.0f;      // Turn right
+	else if (angleDiff < -5.0f) steerAmount = -1.0f; // Turn left
+
+	// Decide acceleration/braking based on turn severity
+	float accelAmount = 0.0f;
+	float brakeAmount = 0.0f;
+
+	float absDiff = fabsf(angleDiff);
+	if (absDiff < 20.0f) {
+		accelAmount = 1.0f; // Full speed on straight
+	} else if (absDiff > 60.0f) {
+		accelAmount = 0.2f; // Slow in tight turns
+		brakeAmount = 0.5f;  // Brake a bit
+	} else {
+		accelAmount = 0.6f; // Medium speed in normal turns
+	}
+
+	// Apply inputs
+	npc->Steer(steerAmount);
+	npc->Accelerate(accelAmount);
+	if (brakeAmount > 0) npc->Brake(brakeAmount);
 }
 
 update_status NPCManager::PostUpdate()
@@ -123,10 +192,10 @@ void NPCManager::CreateNPC(const char* npcName, const char* texturePath)
 		// Set NPC car position
 		npcCar->SetPosition(worldX, worldY);
 
-		// Set starting rotation (same as player: 270° = facing down)
+		// Set starting rotation (same as player: 270ï¿½ = facing down)
 		npcCar->SetRotation(270.0f);
 
-		LOG("NPC car %s positioned at (%.2f, %.2f) with rotation 270°", npcName, worldX, worldY);
+		LOG("NPC car %s positioned at (%.2f, %.2f) with rotation 270ï¿½", npcName, worldX, worldY);
 	}
 	else
 	{

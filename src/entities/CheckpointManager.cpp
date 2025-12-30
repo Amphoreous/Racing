@@ -467,3 +467,16 @@ int CheckpointManager::GetCrossedCheckpointsCount() const
 	}
 	return count;
 }
+
+bool CheckpointManager::GetCheckpointPosition(int order, float& x, float& y) const
+{
+	for (const auto& cp : checkpoints)
+	{
+		if (cp.order == order && cp.sensor)
+		{
+			cp.sensor->GetPositionF(x, y);
+			return true;
+		}
+	}
+	return false;
+}

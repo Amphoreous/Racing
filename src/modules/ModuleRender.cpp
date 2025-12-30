@@ -17,6 +17,7 @@ ModuleRender::ModuleRender(Application* app, bool start_enabled) : Module(app, s
     camera.rotation = 0.0f;
     camera.zoom = 1.0f;
     cameraMode = CAMERA_FOLLOW_CAR;  // Start with car-following mode
+    screenShakeAmount = 0.0f;
 }
 
 ModuleRender::~ModuleRender()
@@ -48,6 +49,16 @@ update_status ModuleRender::Update()
     
     // Update camera position to follow player BEFORE drawing anything
     UpdateCamera();
+
+    // Apply screen shake to camera offset
+    Vector2 shakeOffset = {0, 0};
+    if (screenShakeAmount > 0)
+    {
+        shakeOffset.x = GetRandomValue(-screenShakeAmount, screenShakeAmount);
+        shakeOffset.y = GetRandomValue(-screenShakeAmount, screenShakeAmount);
+    }
+    camera.offset.x = (float)SCREEN_WIDTH * 0.5f + shakeOffset.x;
+    camera.offset.y = (float)SCREEN_HEIGHT * 0.5f + shakeOffset.y;
 
     ClearBackground(background);
 
@@ -128,10 +139,22 @@ void ModuleRender::HandleCameraInput()
     }
 }
 
+void ModuleRender::AddScreenShake(float amount)
+{
+    screenShakeAmount += amount;
+}
+
 void ModuleRender::UpdateCamera()
 {
     if (!App)
         return;
+
+    // Update screen shake
+    if (screenShakeAmount > 0)
+    {
+        screenShakeAmount -= 50.0f * GetFrameTime(); // Reduce over time
+        if (screenShakeAmount < 0) screenShakeAmount = 0;
+    }
 
     if (cameraMode == CAMERA_FOLLOW_CAR)
     {
@@ -144,8 +167,10 @@ void ModuleRender::UpdateCamera()
         App->player->GetCar()->GetPosition(playerX, playerY);
         float playerRotation = App->player->GetCar()->GetRotation();
 
-        // Set camera target to player position
-        camera.target = { playerX, playerY };
+        // Smooth camera target
+        float smoothSpeed = 0.125f;
+        camera.target.x = camera.target.x + (playerX - camera.target.x) * smoothSpeed;
+        camera.target.y = camera.target.y + (playerY - camera.target.y) * smoothSpeed;
 
         // Set camera rotation to match player car rotation (negated for correct direction)
         camera.rotation = -playerRotation;
