@@ -285,8 +285,7 @@ update_status NPCManager::PostUpdate()
 		{
 			npc->Draw();
 
-            // --- DEBUG VISUAL ---
-            if (npcStates.find(npc) != npcStates.end()) {
+            if (App->physics->IsDebugMode() && npcStates.find(npc) != npcStates.end()) {
                 NPCState& state = npcStates[npc];
                 float x, y;
                 npc->GetPosition(x, y);
