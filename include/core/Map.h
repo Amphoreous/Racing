@@ -102,6 +102,7 @@ struct MapObject
     // Polygon data
     std::vector<vec2i> polygonPoints;
     bool hasPolygon = false;
+    bool isClosed = true; // true for polygons (closed), false for polylines (open)
 };
 
 struct MapData

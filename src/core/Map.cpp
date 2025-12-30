@@ -280,7 +280,7 @@ void Map::CreateCollisionBodies()
 
             // Create a single CHAIN (Chain) instead of triangles
             // Pass worldVertices.size() / 2 because the vector has x,y sequential
-            PhysBody* body = App->physics->CreateChain(0, 0, worldVertices.data(), worldVertices.size() / 2, true);
+            PhysBody* body = App->physics->CreateChain(0, 0, worldVertices.data(), worldVertices.size() / 2, object->isClosed);
 
             if (body)
             {
@@ -580,33 +580,40 @@ bool Map::Load(const std::string& path, const std::string& fileName)
 		}
 		// FIN DE LAS LÍNEAS AÑADIDAS
 
-		// Parse polygon data
-		if (inObject && line.find("<polygon ") != std::string::npos)
-		{
-			if (currentObject)
-			{
-				std::string pointsStr = GetAttributeValue(line, "points");
-				if (!pointsStr.empty())
-				{
-					currentObject->hasPolygon = true;
-					std::stringstream ss(pointsStr);
-					std::string pointStr;
-					
-					while (std::getline(ss, pointStr, ' '))
-					{
-						pointStr = Trim(pointStr);
-						if (!pointStr.empty())
-						{
-							size_t commaPos = pointStr.find(',');
-							if (commaPos != std::string::npos)
-							{
-								int px = std::stoi(pointStr.substr(0, commaPos));
-								int py = std::stoi(pointStr.substr(commaPos + 1));
-								currentObject->polygonPoints.push_back({px, py});
-							}
-						}
-					}
-					LOG("  Polygon with %d points", (int)currentObject->polygonPoints.size());
+// Parse polygon or polyline data
+        bool isPolygon = (line.find("<polygon ") != std::string::npos);
+        bool isPolyline = (line.find("<polyline ") != std::string::npos);
+
+        if (inObject && (isPolygon || isPolyline))
+        {
+            if (currentObject)
+            {
+                std::string pointsStr = GetAttributeValue(line, "points");
+                if (!pointsStr.empty())
+                {
+                    currentObject->hasPolygon = true;
+                    // If it's a polygon it's closed, if it's a polyline it's open
+                    currentObject->isClosed = isPolygon;
+
+                    std::stringstream ss(pointsStr);
+                    std::string pointStr;
+
+                    while (std::getline(ss, pointStr, ' '))
+                    {
+                        pointStr = Trim(pointStr);
+                        if (!pointStr.empty())
+                        {
+                            size_t commaPos = pointStr.find(',');
+                            if (commaPos != std::string::npos)
+                            {
+                                int px = std::stoi(pointStr.substr(0, commaPos));
+                                int py = std::stoi(pointStr.substr(commaPos + 1));
+                                currentObject->polygonPoints.push_back({px, py});
+                            }
+                        }
+                    }
+                    LOG("  Shape with %d points (Closed: %s)",
+                        (int)currentObject->polygonPoints.size(), currentObject->isClosed ? "Yes" : "No");
 				}
 			}
 		}
