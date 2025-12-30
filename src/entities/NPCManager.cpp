@@ -4,8 +4,20 @@
 #include "entities/Car.h"
 #include "entities/CheckpointManager.h"
 #include "modules/ModuleResources.h"
+#include "modules/ModulePhysics.h"
+#include "core/p2Point.h"
 #include "raylib.h"
 #include <cmath>
+#include <map>
+#include <box2d/box2d.h>
+
+// Define PI if not already defined
+#ifndef PI
+#define PI 3.141592653589793f
+#endif
+
+// Static map to track each NPC's checkpoint progress
+static std::map<Car*, int> npcTargetIndices;
 
 NPCManager::NPCManager(Application* app, bool start_enabled)
 	: Module(app, start_enabled)
@@ -46,68 +58,134 @@ update_status NPCManager::Update()
 
 void NPCManager::UpdateAI(Car* npc)
 {
-	if (!npc || !App->checkpointManager) return;
+    if (!npc || !App->checkpointManager) return;
 
-	// Get NPC position and angle
-	float npcX, npcY;
-	npc->GetPosition(npcX, npcY);
-	float npcAngle = npc->GetRotation(); // In degrees
+    // 1. INICIALIZAR PROGRESO DEL NPC (Si es la primera vez)
+    if (npcTargetIndices.find(npc) == npcTargetIndices.end()) {
+        npcTargetIndices[npc] = 1; // Todos empiezan yendo al Checkpoint 1
+    }
 
-	// Get target checkpoint (next one in sequence)
-	int targetOrder = App->checkpointManager->GetNextCheckpointOrder();
-	float targetX, targetY;
-	if (!App->checkpointManager->GetCheckpointPosition(targetOrder, targetX, targetY))
-	{
-		// Fallback: use a default position if checkpoint not found
-		targetX = 2714.0f; // C1 position as example
-		targetY = 1472.0f;
-	}
+    int currentTarget = npcTargetIndices[npc];
+    float npcX, npcY;
+    npc->GetPosition(npcX, npcY);
+    float npcAngle = npc->GetRotation();
 
-	// Calculate direction to target
-	float dirX = targetX - npcX;
-	float dirY = targetY - npcY;
+    // 2. GESTIÓN DE CHECKPOINTS (Pathfinding Básico)
+    float targetX, targetY;
+    
+    // Intentamos obtener la posición del checkpoint objetivo de este NPC
+    if (!App->checkpointManager->GetCheckpointPosition(currentTarget, targetX, targetY)) {
+        // Fallback: use a default position if checkpoint not found
+        targetX = 2714.0f; // C1 position as example
+        targetY = 1472.0f;
+    }
 
-	// Desired angle (in radians first)
-	float desiredAngleRad = atan2f(dirY, dirX);
-	float desiredAngleDeg = desiredAngleRad * (180.0f / PI);
+    // Comprobar distancia al objetivo
+    float dx = targetX - npcX;
+    float dy = targetY - npcY;
+    float distToTarget = sqrtf(dx*dx + dy*dy);
 
-	// Adjust for car coordinate system (0 degrees = up in your game)
-	desiredAngleDeg += 90.0f;
+    // Si estamos cerca del checkpoint (ej. 300 pixeles), pasar al siguiente
+    if (distToTarget < 300.0f) {
+        npcTargetIndices[npc]++; // ¡Bien hecho NPC! Ve al siguiente.
+        if (npcTargetIndices[npc] > App->checkpointManager->GetTotalCheckpoints()) {
+            npcTargetIndices[npc] = 0; // Go to finish line
+        }
+        // LOG("NPC reached checkpoint %d", currentTarget);
+        return; // Esperar al siguiente frame para recalcular
+    }
 
-	// Normalize angle to 0-360
-	while (desiredAngleDeg < 0) desiredAngleDeg += 360;
-	while (desiredAngleDeg >= 360) desiredAngleDeg -= 360;
+    // 3. EVASIÓN DE OBSTÁCULOS (RAYCASTS / BIGOTES)
+    // Esto es lo que evita que se coman las paredes en las curvas
+    
+    // Definir los bigotes (longitud y ángulo)
+    float rayLength = 250.0f; // Mira bastante adelante
+    float rayAngle = 30.0f;   // Ángulo de apertura de los bigotes laterales
+    
+    // Convertir rotación del coche a radianes para calcular vectores
+    float angleRad = (npcAngle - 90.0f) * (PI / 180.0f); // -90 porque 0 es Arriba en tu juego
+    
+    // Vectores de dirección de los rayos
+    vec2f forward = { cosf(angleRad), sinf(angleRad) };
+    vec2f leftRay = { cosf(angleRad - rayAngle * (PI/180.0f)), sinf(angleRad - rayAngle * (PI/180.0f)) };
+    vec2f rightRay = { cosf(angleRad + rayAngle * (PI/180.0f)), sinf(angleRad + rayAngle * (PI/180.0f)) };
 
-	// Calculate steering difference
-	float angleDiff = desiredAngleDeg - npcAngle;
+    // Variables para el Raycast
+    PhysBody* hitBody;
+    float hitX, hitY, nX, nY;
+    
+    float avoidSteer = 0.0f;
+    bool obstacleDetected = false;
 
-	// Normalize to -180 to 180
-	while (angleDiff <= -180) angleDiff += 360;
-	while (angleDiff > 180) angleDiff -= 360;
+    // --- RAYO IZQUIERDO ---
+    if (App->physics->Raycast(npcX, npcY, npcX + leftRay.x * rayLength, npcY + leftRay.y * rayLength, hitBody, hitX, hitY, nX, nY)) {
+        if (hitBody && hitBody->GetB2Body()->GetType() == b2_staticBody) { // Solo esquivar paredes estáticas
+            avoidSteer += 1.0f; // Girar DERECHA fuerte
+            obstacleDetected = true;
+            // DrawLine(npcX, npcY, hitX, hitY, RED); // Debug visual
+        }
+    }
 
-	// Decide steering
-	float steerAmount = 0.0f;
-	if (angleDiff > 5.0f) steerAmount = 1.0f;      // Turn right
-	else if (angleDiff < -5.0f) steerAmount = -1.0f; // Turn left
+    // --- RAYO DERECHO ---
+    if (App->physics->Raycast(npcX, npcY, npcX + rightRay.x * rayLength, npcY + rightRay.y * rayLength, hitBody, hitX, hitY, nX, nY)) {
+        if (hitBody && hitBody->GetB2Body()->GetType() == b2_staticBody) {
+            avoidSteer -= 1.0f; // Girar IZQUIERDA fuerte
+            obstacleDetected = true;
+            // DrawLine(npcX, npcY, hitX, hitY, RED); // Debug visual
+        }
+    }
 
-	// Decide acceleration/braking based on turn severity
-	float accelAmount = 0.0f;
-	float brakeAmount = 0.0f;
+    // --- RAYO CENTRAL (Frenado de emergencia) ---
+    float centerBrake = 0.0f;
+    if (App->physics->Raycast(npcX, npcY, npcX + forward.x * (rayLength + 50), npcY + forward.y * (rayLength + 50), hitBody, hitX, hitY, nX, nY)) {
+        if (hitBody && hitBody->GetB2Body()->GetType() == b2_staticBody) {
+            centerBrake = 1.0f; // ¡Muro defrente! FRENAR
+            obstacleDetected = true;
+             // Si hay muro justo delante, elige un lado (preferiblemente hacia donde esté el objetivo)
+             if (avoidSteer == 0.0f) avoidSteer = 1.0f; 
+        }
+    }
 
-	float absDiff = fabsf(angleDiff);
-	if (absDiff < 20.0f) {
-		accelAmount = 1.0f; // Full speed on straight
-	} else if (absDiff > 60.0f) {
-		accelAmount = 0.2f; // Slow in tight turns
-		brakeAmount = 0.5f;  // Brake a bit
-	} else {
-		accelAmount = 0.6f; // Medium speed in normal turns
-	}
+    // 4. DECISIÓN FINAL DE DIRECCIÓN
+    float finalSteer = 0.0f;
+    float finalAccel = 0.0f;
+    float finalBrake = 0.0f;
 
-	// Apply inputs
-	npc->Steer(steerAmount);
-	npc->Accelerate(accelAmount);
-	if (brakeAmount > 0) npc->Brake(brakeAmount);
+    if (obstacleDetected) {
+        // MODO PÁNICO: Priorizar no chocar
+        finalSteer = avoidSteer;
+        finalAccel = 0.3f; // Despacito mientras esquivo
+        if (centerBrake > 0.0f) {
+            finalAccel = 0.0f;
+            finalBrake = 0.5f; // Frenar si voy de cara
+            finalSteer = 1.0f; // Girar a lo loco para salir
+        }
+    } else {
+        // MODO CARRERA: Ir hacia el checkpoint
+        float desiredAngleRad = atan2f(targetY - npcY, targetX - npcX);
+        float desiredAngleDeg = desiredAngleRad * (180.0f / PI);
+        desiredAngleDeg += 90.0f; // Ajuste de coordenadas
+
+        // Diferencia de ángulo
+        float angleDiff = desiredAngleDeg - npcAngle;
+        while (angleDiff <= -180) angleDiff += 360;
+        while (angleDiff > 180) angleDiff -= 360;
+
+        // Suavizar giro
+        if (angleDiff > 10.0f) finalSteer = 1.0f;
+        else if (angleDiff < -10.0f) finalSteer = -1.0f;
+        else finalSteer = angleDiff / 10.0f; // Giro suave si estamos casi alineados
+
+        // Gestión de velocidad en curvas
+        if (fabs(angleDiff) < 20.0f) finalAccel = 1.0f; // Recta
+        else if (fabs(angleDiff) > 60.0f) { finalAccel = 0.2f; finalBrake = 0.1f; } // Curva cerrada
+        else finalAccel = 0.7f; // Curva normal
+    }
+
+    // 5. APLICAR INPUTS
+    npc->Steer(finalSteer);
+    npc->Accelerate(finalAccel);
+    if (finalBrake > 0.0f) npc->Brake(finalBrake);
 }
 
 update_status NPCManager::PostUpdate()
