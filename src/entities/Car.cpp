@@ -8,12 +8,12 @@
 #include <math.h>
 
 // Default car physics values (tunable)
-#define DEFAULT_ACCELERATION 20.0f
-#define DEFAULT_REVERSE_FORCE 10.0f
+#define DEFAULT_ACCELERATION 10.0f
+#define DEFAULT_REVERSE_FORCE 5.0f
 #define DEFAULT_BRAKE_FORCE 300.0f
-#define DEFAULT_MAX_SPEED 100.0f
-#define DEFAULT_REVERSE_MAX_SPEED 50.0f
-#define DEFAULT_STEERING_SENSITIVITY 200.0f
+#define DEFAULT_MAX_SPEED 70.0f
+#define DEFAULT_REVERSE_MAX_SPEED 20.0f
+#define DEFAULT_STEERING_SENSITIVITY 80.0f
 #define DEFAULT_DRIFT_IMPULSE 500.0f
 #define DEFAULT_CAR_WIDTH 40.0f   // Narrower for vertical car
 #define DEFAULT_CAR_HEIGHT 70.0f  // Taller for vertical car
@@ -464,16 +464,16 @@ void Car::UpdateTerrainEffects()
 			terrainSpeedModifier = 1.0f;
 			break;
 		case MUD:
-			terrainFrictionModifier = 0.95f;  // Ligeramente más fricción para frenar gradualmente
-			terrainAccelerationModifier = 0.7f;  // Aceleración reducida al 70%
-			terrainSpeedModifier = 0.6f;  // Velocidad máxima reducida al 60%
+			terrainFrictionModifier = 0.96f;  // Muy poca fricción adicional
+			terrainAccelerationModifier = 0.85f;  // Aceleración al 85% (mejor que antes)
+			terrainSpeedModifier = 0.9f;  // Velocidad al 85% = 59.5 px/s (más rápido)
 			// Add screen shake for rough terrain
 			if (app && app->renderer) app->renderer->AddScreenShake(3.0f);
 			break;
 		case WATER:
-			terrainFrictionModifier = 0.99f;  // CASI SIN FRICCIÓN = mantiene velocidad + derrape natural
-			terrainAccelerationModifier = 1.5f;  // Aceleración aumentada al 115%
-			terrainSpeedModifier = 2.0f;  // Velocidad máxima AUMENTADA al 130% = MUCHO MÁS RÁPIDO
+			terrainFrictionModifier = 0.995f;  // CASI NULA fricción = máximo derrape
+			terrainAccelerationModifier = 1.8f;  // Aceleración MUCHO más rápida (180%)
+			terrainSpeedModifier = 2.5f;  // Velocidad al 250% = 175 px/s (MUY RÁPIDO)
 			// Add screen shake for splash
 			if (app && app->renderer) app->renderer->AddScreenShake(3.0f);
 			break;
