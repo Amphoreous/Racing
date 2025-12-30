@@ -2,6 +2,7 @@
 #include "core/Application.h"
 #include "modules/ModulePhysics.h"
 #include "modules/ModuleResources.h"
+#include "modules/ModuleAudio.h"
 #include "entities/NPCManager.h"
 #include "entities/PhysBody.h"
 #include "entities/Car.h"
@@ -9,12 +10,12 @@
 #include <cmath>
 
 // Ability configuration
-#define PUSH_RADIUS 150.0f              // Effect radius in pixels
-#define PUSH_FORCE 2000.0f              // Force magnitude
-#define ACTIVE_DURATION 0.5f            // How long the push lasts (seconds)
-#define COOLDOWN_DURATION 5.0f          // Cooldown between uses (seconds)
-#define EFFECT_MAX_SCALE 0.5f           // Maximum scale of visual effect (adjusted size)
-#define EFFECT_ROTATION_SPEED 360.0f    // Degrees per second (relative rotation)
+#define PUSH_RADIUS 150.0f
+#define PUSH_FORCE 2000.0f
+#define ACTIVE_DURATION 0.5f
+#define COOLDOWN_DURATION 5.0f
+#define EFFECT_MAX_SCALE 0.5f
+#define EFFECT_ROTATION_SPEED 360.0f
 
 PushAbility::PushAbility()
 	: app(nullptr)
@@ -23,6 +24,7 @@ PushAbility::PushAbility()
 	, activeDuration(ACTIVE_DURATION)
 	, cooldownTimer(0.0f)
 	, cooldownDuration(COOLDOWN_DURATION)
+	, wasCooldownReady(false)
 	, centerX(0.0f)
 	, centerY(0.0f)
 	, playerRotation(0.0f)
@@ -33,6 +35,8 @@ PushAbility::PushAbility()
 	, effectRotation(0.0f)
 	, maxScale(EFFECT_MAX_SCALE)
 	, pushSensor(nullptr)
+	, abilitySfxId(0)
+	, cooldownReadySfxId(0)
 {
 }
 
@@ -45,12 +49,18 @@ bool PushAbility::Init(Application* application)
 {
 	app = application;
 
-	// Load effect texture
 	effectTexture = app->resources->LoadTexture("assets/sprites/space_effect.png");
 	if (effectTexture.id == 0)
 	{
 		LOG("WARNING: Failed to load push ability effect texture");
 		return false;
+	}
+
+	if (app->audio)
+	{
+		abilitySfxId = app->audio->LoadFx("assets/audio/fx/ability.wav");
+		cooldownReadySfxId = app->audio->LoadFx("assets/audio/fx/cd_ability_down.wav");
+		LOG("Push ability sound effects loaded (Ability: %u, Cooldown: %u)", abilitySfxId, cooldownReadySfxId);
 	}
 
 	LOG("Push ability initialized successfully (Texture size: %dx%d)", effectTexture.width, effectTexture.height);
@@ -59,7 +69,6 @@ bool PushAbility::Init(Application* application)
 
 void PushAbility::Activate(float playerX, float playerY, float rotation)
 {
-	// Check if ability is ready
 	if (!IsReady())
 	{
 		LOG("Push ability on cooldown! %.1fs remaining", cooldownDuration - cooldownTimer);
@@ -69,24 +78,25 @@ void PushAbility::Activate(float playerX, float playerY, float rotation)
 	LOG("=== PUSH ABILITY ACTIVATED ===");
 	LOG("Position: (%.1f, %.1f), Rotation: %.1f°", playerX, playerY, rotation);
 
-	// Set ability as active
+	// Play ability.wav
+	if (app && app->audio && abilitySfxId > 0)
+	{
+		app->audio->PlayFx(abilitySfxId);
+	}
+
 	active = true;
 	activeTimer = 0.0f;
 	cooldownTimer = 0.0f;
+	wasCooldownReady = false;
 
-	// Store center position and rotation
 	centerX = playerX;
 	centerY = playerY;
 	playerRotation = rotation;
 
-	// Reset visual effect (relative rotation starts at 0)
 	effectScale = 0.0f;
 	effectRotation = 0.0f;
 
-	// Create physics sensor for push area
 	CreatePushSensor();
-
-	// Immediately apply push force
 	ApplyPushToNearbyNPCs();
 }
 
@@ -94,10 +104,22 @@ void PushAbility::Update()
 {
 	float deltaTime = GetFrameTime();
 
-	// Update cooldown timer
+	// Update cooldown
 	if (cooldownTimer < cooldownDuration)
 	{
 		cooldownTimer += deltaTime;
+
+		// Check if cooldown just finished
+		if (cooldownTimer >= cooldownDuration && !wasCooldownReady)
+		{
+			// Play cd_ability_down.wav
+			if (app && app->audio && cooldownReadySfxId > 0)
+			{
+				app->audio->PlayFx(cooldownReadySfxId);
+				LOG("Ability cooldown ready!");
+			}
+			wasCooldownReady = true;
+		}
 	}
 
 	// Update active ability
@@ -105,19 +127,15 @@ void PushAbility::Update()
 	{
 		activeTimer += deltaTime;
 
-		// Expand effect (grows quickly at start)
 		float expandProgress = activeTimer / activeDuration;
 		effectScale = expandProgress * maxScale;
 
-		// Rotate effect for visual appeal (relative to player rotation)
 		effectRotation += EFFECT_ROTATION_SPEED * deltaTime;
 		if (effectRotation >= 360.0f)
 			effectRotation -= 360.0f;
 
-		// Continue applying push force (gradually weakens)
 		ApplyPushToNearbyNPCs();
 
-		// Check if ability duration ended
 		if (activeTimer >= activeDuration)
 		{
 			LOG("Push ability ended");
@@ -132,19 +150,14 @@ void PushAbility::Draw() const
 	if (!active || effectTexture.id == 0)
 		return;
 
-	// Calculate current size based on scale
 	float currentWidth = effectTexture.width * effectScale;
 	float currentHeight = effectTexture.height * effectScale;
 
-	// Calculate alpha fade (starts strong, fades out)
 	float alpha = 1.0f - (activeTimer / activeDuration);
-	alpha = alpha * alpha;  // Squared for smoother fade
+	alpha = alpha * alpha;
 
-	// CRITICAL FIX: Use ONLY player rotation (no offset needed)
-	// Just add the spinning animation to the player's rotation
 	float totalRotation = playerRotation + effectRotation;
 
-	// Draw the expanding, rotating effect
 	Rectangle source = { 0, 0, (float)effectTexture.width, (float)effectTexture.height };
 	Rectangle dest = { centerX, centerY, currentWidth, currentHeight };
 	Vector2 origin = { currentWidth * 0.5f, currentHeight * 0.5f };
@@ -153,7 +166,6 @@ void PushAbility::Draw() const
 
 	DrawTexturePro(effectTexture, source, dest, origin, totalRotation, tint);
 
-	// Optional: Draw debug circle for push radius
 	if (app && app->physics && app->physics->IsDebugMode())
 	{
 		DrawCircleLines((int)centerX, (int)centerY, pushRadius, ColorAlpha(YELLOW, 0.5f));
@@ -177,7 +189,7 @@ bool PushAbility::IsActive() const
 float PushAbility::GetCooldownProgress() const
 {
 	if (cooldownTimer >= cooldownDuration)
-		return 1.0f;  // Ready
+		return 1.0f;
 
 	return cooldownTimer / cooldownDuration;
 }
@@ -187,11 +199,10 @@ void PushAbility::CreatePushSensor()
 	if (!app || !app->physics)
 		return;
 
-	// Create circular sensor at push center
 	pushSensor = app->physics->CreateCircle(centerX, centerY, pushRadius, PhysBody::BodyType::STATIC);
 	if (pushSensor)
 	{
-		pushSensor->SetSensor(true);  // Don't physically collide, just detect
+		pushSensor->SetSensor(true);
 		LOG("Push sensor created at (%.1f, %.1f) with radius %.1f", centerX, centerY, pushRadius);
 	}
 }
@@ -210,9 +221,8 @@ void PushAbility::ApplyPushToNearbyNPCs()
 	if (!app || !app->npcManager)
 		return;
 
-	// Calculate force multiplier (weakens over time)
 	float forceMult = 1.0f - (activeTimer / activeDuration);
-	forceMult = forceMult * forceMult;  // Squared for stronger initial push
+	forceMult = forceMult * forceMult;
 
 	const std::vector<Car*>& npcs = app->npcManager->GetNPCs();
 
@@ -222,27 +232,21 @@ void PushAbility::ApplyPushToNearbyNPCs()
 		if (!npc || !npc->GetPhysBody())
 			continue;
 
-		// Get NPC position
 		float npcX, npcY;
 		npc->GetPosition(npcX, npcY);
 
-		// Calculate distance from push center
 		float dx = npcX - centerX;
 		float dy = npcY - centerY;
 		float distance = sqrtf(dx * dx + dy * dy);
 
-		// Check if NPC is within push radius
-		if (distance < pushRadius && distance > 0.1f)  // Avoid division by zero
+		if (distance < pushRadius && distance > 0.1f)
 		{
-			// Normalize direction vector
 			float dirX = dx / distance;
 			float dirY = dy / distance;
 
-			// Calculate push force (stronger closer to center)
 			float distanceRatio = 1.0f - (distance / pushRadius);
 			float currentForce = pushForce * distanceRatio * forceMult;
 
-			// Apply radial push force (away from center)
 			float forceX = dirX * currentForce;
 			float forceY = dirY * currentForce;
 
@@ -250,7 +254,6 @@ void PushAbility::ApplyPushToNearbyNPCs()
 
 			pushedCount++;
 
-			// Debug visualization
 			if (app->physics->IsDebugMode())
 			{
 				DrawLine((int)centerX, (int)centerY, (int)npcX, (int)npcY, RED);
@@ -258,7 +261,7 @@ void PushAbility::ApplyPushToNearbyNPCs()
 		}
 	}
 
-	if (pushedCount > 0 && activeTimer < 0.1f)  // Log only at start
+	if (pushedCount > 0 && activeTimer < 0.1f)
 	{
 		LOG("Pushed %d NPCs", pushedCount);
 	}

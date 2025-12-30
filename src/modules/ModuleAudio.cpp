@@ -87,7 +87,7 @@ bool ModuleAudio::PlayMusic(const char* path, float fade_time)
 	PlayMusicStream(music);
 
 	// Set volume for background music (lower volume so it doesn't overpower gameplay)
-	SetMusicVolume(music, 0.05f);  // 20% volume - subtle background music
+	SetMusicVolume(music, 0.05f);
 
 	LOG("Successfully playing %s (looping enabled, background volume: 0.2)", path);
 
@@ -111,8 +111,9 @@ unsigned int ModuleAudio::LoadFx(const char* path)
 	}
 	else
 	{
-		fx[fx_count++] = sound;
-		ret = fx_count;
+		fx[fx_count] = sound;        // Assign to current index
+		ret = fx_count + 1;          // Return ID (1-indexed)
+		fx_count++;                  // Increment counter
 	}
 
 	return ret;
@@ -128,7 +129,12 @@ bool ModuleAudio::PlayFx(unsigned int id, int repeat)
 
 	bool ret = false;
 
-	if (id < fx_count) PlaySound(fx[id]);
+	// ID is 1-indexed, convert to 0-indexed array access
+	if (id > 0 && id <= fx_count)
+	{
+		PlaySound(fx[id - 1]);  // Convert 1-indexed ID to 0-indexed array
+		ret = true;
+	}
 
 	return ret;
 }

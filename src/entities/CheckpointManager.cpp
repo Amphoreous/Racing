@@ -2,6 +2,7 @@
 #include "core/Application.h"
 #include "core/Map.h"
 #include "modules/ModulePhysics.h"
+#include "modules/ModuleAudio.h"
 #include "entities/Player.h"
 #include "entities/Car.h"
 #include "raylib.h"
@@ -16,6 +17,7 @@ CheckpointManager::CheckpointManager(Application* app, bool start_enabled)
 	, totalLaps(5)
 	, raceFinished(false)
 	, playerBody(nullptr)
+	, lapCompleteSfxId(0)
 {
 }
 
@@ -27,7 +29,6 @@ bool CheckpointManager::Start()
 {
 	LOG("Initializing Checkpoint Manager");
 
-	// Get player car physics body reference
 	if (App->player && App->player->GetCar())
 	{
 		playerBody = App->player->GetCar()->GetPhysBody();
@@ -39,8 +40,13 @@ bool CheckpointManager::Start()
 		return false;
 	}
 
-	// Load checkpoints from map
 	LoadCheckpointsFromMap();
+
+	// Load checkpoint.wav
+	if (App->audio)
+	{
+		lapCompleteSfxId = App->audio->LoadFx("assets/audio/fx/checkpoint.wav");
+	}
 
 	LOG("CheckpointManager initialized - %d checkpoints loaded", (int)checkpoints.size());
 	LOG("Race configuration: %d laps, %d checkpoints per lap", totalLaps, totalCheckpoints);
@@ -51,10 +57,8 @@ bool CheckpointManager::Start()
 
 update_status CheckpointManager::Update()
 {
-	// Check if race is finished
 	if (raceFinished)
 	{
-		// Race complete - stop the game
 		LOG("=== RACE FINISHED! ===");
 		LOG("Player completed %d laps!", totalLaps);
 		return UPDATE_STOP;
@@ -65,10 +69,8 @@ update_status CheckpointManager::Update()
 
 update_status CheckpointManager::PostUpdate()
 {
-	// Draw race finish message if race is complete
 	if (raceFinished)
 	{
-		// Draw victory screen overlay
 		DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, Fade(BLACK, 0.7f));
 
 		const char* victoryText = "RACE COMPLETE!";
@@ -109,7 +111,6 @@ bool CheckpointManager::CleanUp()
 {
 	LOG("Cleaning up Checkpoint Manager");
 
-	// Sensors are destroyed by ModulePhysics automatically
 	checkpoints.clear();
 	finishLine = nullptr;
 	playerBody = nullptr;
@@ -128,7 +129,6 @@ void CheckpointManager::LoadCheckpointsFromMap()
 	LOG("=== CHECKPOINT LOADING DEBUG ===");
 	LOG("Total map objects found: %d", (int)App->map->mapData.objects.size());
 
-	// Iterate through all map objects
 	int checkpointCount = 0;
 	for (const auto& object : App->map->mapData.objects)
 	{
@@ -138,32 +138,26 @@ void CheckpointManager::LoadCheckpointsFromMap()
 			object->x, object->y,
 			object->width, object->height);
 
-		// List all properties of this object
 		LOG("  Properties count: %d", (int)object->properties.propertyList.size());
 		for (const auto& prop : object->properties.propertyList)
 		{
 			LOG("    Property: %s = %s", prop->name.c_str(), prop->value.c_str());
 		}
 
-		// Look for "Order" property to identify checkpoints
 		Properties::Property* orderProp = object->properties.GetProperty("Order");
 
 		if (!orderProp)
 		{
-			// Not a checkpoint - skip it
 			LOG("  -> Skipped (no Order property)");
 			continue;
 		}
 
-		// This object HAS the Order property - it's a checkpoint!
 		checkpointCount++;
 		LOG("  -> CHECKPOINT DETECTED (has Order property)!");
 
-		// Parse order value
 		int order = std::stoi(orderProp->value);
 		LOG("  -> Order value: %d", order);
 
-		// Create checkpoint sensor
 		CreateCheckpointSensor(object, order);
 
 		LOG("Loaded checkpoint: %s (Order: %d) at (%d, %d)",
@@ -172,7 +166,6 @@ void CheckpointManager::LoadCheckpointsFromMap()
 
 	LOG("Total checkpoints processed: %d", checkpointCount);
 
-	// Find finish line for quick reference
 	for (auto& checkpoint : checkpoints)
 	{
 		if (checkpoint.order == 0)
@@ -196,29 +189,22 @@ void CheckpointManager::CreateCheckpointSensor(MapObject* object, int order)
 	if (!App->physics || object->width <= 0 || object->height <= 0)
 		return;
 
-	// LOG DETALLADO: Coordenadas originales de Tiled
 	LOG("=== CREATING SENSOR FOR %s ===", object->name.c_str());
 	LOG("  Tiled coords (raw): X=%d Y=%d W=%d H=%d", object->x, object->y, object->width, object->height);
 
-	// CRITICAL FIX: The "Checkpoints" layer in Tiled has an offset!
-	// offsetx="32" offsety="240" (from Map.tmx)
-	// We need to ADD this offset to the object's position
 	const float CHECKPOINTS_LAYER_OFFSET_X = 32.0f;
 	const float CHECKPOINTS_LAYER_OFFSET_Y = 240.0f;
 
-	// Apply layer offset to get world coordinates
 	float worldX = (float)object->x + CHECKPOINTS_LAYER_OFFSET_X;
 	float worldY = (float)object->y + CHECKPOINTS_LAYER_OFFSET_Y;
 
 	LOG("  With layer offset: X=%.2f Y=%.2f", worldX, worldY);
 
-	// Calculate center position
 	float centerX = worldX + (float)object->width * 0.5f;
 	float centerY = worldY + (float)object->height * 0.5f;
 
 	LOG("  Calculated center (pixels): (%.2f, %.2f)", centerX, centerY);
 
-	// Create static rectangle sensor (EXACTAS dimensiones de Tiled)
 	PhysBody* sensor = App->physics->CreateRectangle(
 		centerX, centerY,
 		(float)object->width, (float)object->height,
@@ -231,32 +217,24 @@ void CheckpointManager::CreateCheckpointSensor(MapObject* object, int order)
 		return;
 	}
 
-	// Configure as sensor (no physical collision, just detection)
 	sensor->SetSensor(true);
 
-	// VERIFICACIÓN: Leer la posición que Box2D realmente almacenó
 	float verifyX, verifyY;
 	sensor->GetPositionF(verifyX, verifyY);
 	LOG("  Box2D returned position (pixels): (%.2f, %.2f)", verifyX, verifyY);
 	LOG("  Difference: deltaX=%.2f deltaY=%.2f", verifyX - centerX, verifyY - centerY);
 
-	// Create checkpoint data
 	Checkpoint checkpoint;
 	checkpoint.order = order;
 	checkpoint.name = object->name;
 	checkpoint.sensor = sensor;
 	checkpoint.crossed = false;
 
-	// Add to list BEFORE setting user data
 	checkpoints.push_back(checkpoint);
 
-	// CRITICAL FIX: Get stable pointer AFTER push_back
 	Checkpoint* stablePtr = &checkpoints.back();
 
-	// Store reference to THIS CHECKPOINT (not the manager) in sensor user data
 	stablePtr->sensor->SetUserData(stablePtr);
-
-	// Register THIS MANAGER as collision listener for this sensor
 	stablePtr->sensor->SetCollisionListener(this);
 
 	LOG("=== SENSOR CREATED SUCCESSFULLY ===\n");
@@ -274,22 +252,17 @@ Checkpoint* CheckpointManager::FindCheckpointBySensor(PhysBody* sensor)
 
 void CheckpointManager::OnCollisionEnter(PhysBody* other)
 {
-	// Don't process if race is already finished
 	if (raceFinished)
 		return;
 
-	// Check if collision is with player car
 	if (!other || other != playerBody)
 		return;
 
 	LOG("Player collision with checkpoint sensor detected!");
 
-	// Get player position for logging
 	float carX, carY;
 	other->GetPositionF(carX, carY);
 
-	// Box2D already confirmed collision - find the closest checkpoint
-	// This will be the one we actually collided with
 	Checkpoint* hitCheckpoint = nullptr;
 	float minDistance = FLT_MAX;
 
@@ -312,7 +285,6 @@ void CheckpointManager::OnCollisionEnter(PhysBody* other)
 		}
 	}
 
-	// Process the checkpoint we hit
 	if (hitCheckpoint)
 	{
 		LOG("Collided with checkpoint: %s", hitCheckpoint->name.c_str());
@@ -326,7 +298,6 @@ bool CheckpointManager::ValidateCheckpointSequence(int checkpointOrder)
 
 	Checkpoint* checkpoint = nullptr;
 
-	// Find the checkpoint by order
 	for (auto& cp : checkpoints)
 	{
 		if (cp.order == checkpointOrder)
@@ -349,7 +320,6 @@ bool CheckpointManager::ValidateCheckpointSequence(int checkpointOrder)
 	{
 		LOG("  -> This is the finish line");
 
-		// Can only cross finish line if all checkpoints are crossed
 		bool allCheckpointsCrossed = true;
 		for (const auto& cp : checkpoints)
 		{
@@ -363,10 +333,15 @@ bool CheckpointManager::ValidateCheckpointSequence(int checkpointOrder)
 
 		if (allCheckpointsCrossed)
 		{
-			// Valid lap completion!
 			LOG("=== LAP %d COMPLETE! ===", currentLap);
 
-			// Check if this was the final lap
+			// Play checkpoint.wav
+			if (App->audio && lapCompleteSfxId > 0)
+			{
+				App->audio->PlayFx(lapCompleteSfxId);
+				LOG("Playing lap completion sound");
+			}
+
 			if (currentLap >= totalLaps)
 			{
 				raceFinished = true;
@@ -376,11 +351,9 @@ bool CheckpointManager::ValidateCheckpointSequence(int checkpointOrder)
 				return true;
 			}
 
-			// Move to next lap
 			currentLap++;
 			LOG("Starting lap %d / %d", currentLap, totalLaps);
 
-			// Reset all checkpoints for next lap
 			ResetCheckpoints();
 			nextCheckpointOrder = 1;
 
@@ -396,7 +369,6 @@ bool CheckpointManager::ValidateCheckpointSequence(int checkpointOrder)
 	// CHECKPOINT logic (order 1-5)
 	LOG("  -> Expected next checkpoint: %d", nextCheckpointOrder);
 
-	// Check if this is the next expected checkpoint
 	if (checkpoint->order == nextCheckpointOrder)
 	{
 		if (!checkpoint->crossed)
@@ -405,13 +377,11 @@ bool CheckpointManager::ValidateCheckpointSequence(int checkpointOrder)
 			LOG("=== Checkpoint %s crossed! (%d/%d) ===",
 				checkpoint->name.c_str(), checkpoint->order, totalCheckpoints);
 
-			// Move to next checkpoint
 			nextCheckpointOrder++;
 
-			// If all checkpoints crossed, next is finish line
 			if (nextCheckpointOrder > totalCheckpoints)
 			{
-				nextCheckpointOrder = 0;  // 0 = finish line
+				nextCheckpointOrder = 0;
 				LOG("All checkpoints crossed - head to finish line!");
 			}
 
@@ -448,7 +418,6 @@ void CheckpointManager::OnCollisionExit(PhysBody* other)
 
 bool CheckpointManager::IsLapComplete() const
 {
-	// Check if all checkpoints are crossed and ready for finish line
 	for (const auto& cp : checkpoints)
 	{
 		if (cp.order > 0 && !cp.crossed)

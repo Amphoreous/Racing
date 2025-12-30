@@ -45,6 +45,7 @@ private:
 
 	float cooldownTimer;        // Time since last use
 	float cooldownDuration;     // Cooldown between uses (seconds)
+	bool wasCooldownReady;      // Track if cooldown was ready last frame (for sound trigger)
 
 	// Effect properties
 	float centerX, centerY;     // Center of the push area
@@ -60,6 +61,10 @@ private:
 
 	// Push sensor (physics body)
 	PhysBody* pushSensor;       // Circular sensor to detect NPCs
+
+	// Sound effects
+	unsigned int abilitySfxId;           // ability.wav
+	unsigned int cooldownReadySfxId;     // cd_ability_down.wav
 
 	// Helper methods
 	void CreatePushSensor();
