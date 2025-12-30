@@ -107,7 +107,7 @@ bool Car::Start()
 		motorSound = app->resources->LoadMusic("assets/audio/fx/car_motor.wav");
 		if (IsMusicValid(motorSound))
 		{
-			motorSound.looping = false;  // CHANGED: Disable auto-loop, we'll restart manually
+			motorSound.looping = false;
 			SetMusicVolume(motorSound, 0.3f);  // 30% volume
 			LOG("Car motor sound loaded successfully");
 		}

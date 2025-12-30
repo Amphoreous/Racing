@@ -2,6 +2,7 @@
 #include "core/Module.h"
 #include "core/Globals.h"
 #include "core/p2Point.h"
+#include "raylib.h"
 
 class Car;
 class PushAbility;
@@ -27,5 +28,10 @@ private:
 	Car* playerCar;
 	PushAbility* pushAbility;
 
+	// Car passing sound
+	Music carPassingSound;
+	bool isCarPassingPlaying;
+
 	void HandleInput();
+	void CheckNPCPassing();  // NEW: Check if NPCs are passing
 };

@@ -3,14 +3,18 @@
 #include "core/Application.h"
 #include "core/Map.h"
 #include "entities/Car.h"
+#include "entities/NPCManager.h"
 #include "modules/ModulePhysics.h"
 #include "modules/ModuleAudio.h"
+#include "modules/ModuleResources.h"
 #include "raylib.h"
 
 ModulePlayer::ModulePlayer(Application* app, bool start_enabled)
 	: Module(app, start_enabled)
 	, playerCar(nullptr)
 	, pushAbility(nullptr)
+	, carPassingSound({ 0 })
+	, isCarPassingPlaying(false)
 {
 }
 
@@ -101,6 +105,22 @@ bool ModulePlayer::Start()
 		pushAbility = nullptr;
 	}
 
+	// Load car passing sound
+	if (App->resources)
+	{
+		carPassingSound = App->resources->LoadMusic("assets/audio/fx/car_passing.wav");
+		if (IsMusicValid(carPassingSound))
+		{
+			carPassingSound.looping = false;
+			SetMusicVolume(carPassingSound, 0.4f);  // 40% volume
+			LOG("Car passing sound loaded successfully");
+		}
+		else
+		{
+			LOG("WARNING: Failed to load car passing sound");
+		}
+	}
+
 	LOG("Player car created successfully");
 	return true;
 }
@@ -121,6 +141,9 @@ update_status ModulePlayer::Update()
 	{
 		pushAbility->Update();
 	}
+
+	// Check if NPCs are passing
+	CheckNPCPassing();
 
 	return UPDATE_CONTINUE;
 }
@@ -145,6 +168,13 @@ update_status ModulePlayer::PostUpdate()
 bool ModulePlayer::CleanUp()
 {
 	LOG("Cleaning up player module");
+
+	// Stop car passing sound if playing
+	if (IsMusicValid(carPassingSound) && isCarPassingPlaying)
+	{
+		StopMusicStream(carPassingSound);
+		isCarPassingPlaying = false;
+	}
 
 	// Cleanup push ability
 	if (pushAbility)
@@ -207,6 +237,76 @@ void ModulePlayer::HandleInput()
 
 			// Activate ability with position AND rotation
 			pushAbility->Activate(playerX, playerY, playerRotation);
+		}
+	}
+}
+
+void ModulePlayer::CheckNPCPassing()
+{
+	if (!playerCar || !App->npcManager || !IsMusicValid(carPassingSound))
+	{
+		return;
+	}
+
+	// Update music stream
+	UpdateMusicStream(carPassingSound);
+
+	// Get player position
+	float playerX, playerY;
+	playerCar->GetPosition(playerX, playerY);
+
+	const float PASSING_DISTANCE = 150.0f;  // Distance to detect nearby NPCs
+	const float MIN_NPC_SPEED = 15.0f;      // NPC must be moving
+
+	bool npcPassingNearby = false;
+
+	// Check all NPCs
+	const std::vector<Car*>& npcs = App->npcManager->GetNPCs();
+
+	for (Car* npc : npcs)
+	{
+		if (!npc)
+			continue;
+
+		// Get NPC position and speed
+		float npcX, npcY;
+		npc->GetPosition(npcX, npcY);
+		float npcSpeed = npc->GetCurrentSpeed();
+
+		// Calculate distance to NPC
+		float dx = npcX - playerX;
+		float dy = npcY - playerY;
+		float distance = sqrtf(dx * dx + dy * dy);
+
+		// Check if NPC is nearby AND moving (player can be stopped or moving)
+		if (distance < PASSING_DISTANCE && npcSpeed > MIN_NPC_SPEED)
+		{
+			npcPassingNearby = true;
+			break;  // Found at least one nearby moving NPC
+		}
+	}
+
+	// Play sound if NPC is nearby and moving
+	if (npcPassingNearby)
+	{
+		if (!isCarPassingPlaying)
+		{
+			PlayMusicStream(carPassingSound);
+			isCarPassingPlaying = true;
+		}
+		// Restart if sound finished
+		else if (!IsMusicStreamPlaying(carPassingSound))
+		{
+			PlayMusicStream(carPassingSound);
+		}
+	}
+	// Stop sound if no NPCs nearby
+	else
+	{
+		if (isCarPassingPlaying)
+		{
+			StopMusicStream(carPassingSound);
+			isCarPassingPlaying = false;
 		}
 	}
 }
