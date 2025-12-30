@@ -12,9 +12,16 @@ class ModulePhysics;
 class ModuleGame;
 class ModuleResources;
 class ModulePlayer;
+class ModuleMainMenu;
 class NPCManager;
 class Map;
 class CheckpointManager;
+
+enum GameState
+{
+    GAME_MENU,
+    GAME_PLAYING
+};
 
 class Application
 {
@@ -30,6 +37,9 @@ public:
 	NPCManager* npcManager;
 	Map* map;
 	CheckpointManager* checkpointManager;
+	ModuleMainMenu* mainMenu;
+
+	GameState state = GAME_MENU;
 
 private:
 

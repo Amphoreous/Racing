@@ -9,6 +9,7 @@
 #include "entities/NPCManager.h"
 #include "core/Map.h"
 #include "entities/CheckpointManager.h"
+#include "modules/ModuleMainMenu.h"
 
 #include "core/Application.h"
 
@@ -23,6 +24,7 @@ Application::Application()
 	player = new ModulePlayer(this);
 	npcManager = new NPCManager(this);  // AÑADIR ESTA LÍNEA
 	checkpointManager = new CheckpointManager(this);
+	mainMenu = new ModuleMainMenu(this);
 	renderer = new ModuleRender(this);
 
 	// Module initialization order matters - resources first, rendering last
@@ -34,8 +36,17 @@ Application::Application()
 	AddModule(player);     // Player car
 	AddModule(npcManager); // AÑADIR ESTA LÍNEA - NPC cars after player
 	AddModule(checkpointManager);
+	AddModule(mainMenu);
 	AddModule(physics);    // Physics debug render - on top of car
 	AddModule(renderer);
+
+	// Disable game modules initially, enable them from menu
+	scene_intro->Disable();
+	physics->Disable();
+	player->Disable();
+	npcManager->Disable();
+	map->Disable();
+	checkpointManager->Disable();
 }
 
 Application::~Application()
@@ -76,30 +87,50 @@ update_status Application::Update()
 {
 	update_status ret = UPDATE_CONTINUE;
 
-	for (auto it = list_modules.begin(); it != list_modules.end() && ret == UPDATE_CONTINUE; ++it)
+	if (state == GAME_MENU)
 	{
-		Module* module = *it;
-		if (module->IsEnabled())
+		// Only update menu and renderer for drawing
+		ret = renderer->PreUpdate();
+		if (ret == UPDATE_CONTINUE)
 		{
-			ret = module->PreUpdate();
+			ret = mainMenu->Update();
+		}
+		if (ret == UPDATE_CONTINUE)
+		{
+			ret = mainMenu->PostUpdate();
+		}
+		if (ret == UPDATE_CONTINUE)
+		{
+			ret = renderer->PostUpdate();
 		}
 	}
-
-	for (auto it = list_modules.begin(); it != list_modules.end() && ret == UPDATE_CONTINUE; ++it)
+	else
 	{
-		Module* module = *it;
-		if (module->IsEnabled())
+		for (auto it = list_modules.begin(); it != list_modules.end() && ret == UPDATE_CONTINUE; ++it)
 		{
-			ret = module->Update();
+			Module* module = *it;
+			if (module->IsEnabled())
+			{
+				ret = module->PreUpdate();
+			}
 		}
-	}
 
-	for (auto it = list_modules.begin(); it != list_modules.end() && ret == UPDATE_CONTINUE; ++it)
-	{
-		Module* module = *it;
-		if (module->IsEnabled())
+		for (auto it = list_modules.begin(); it != list_modules.end() && ret == UPDATE_CONTINUE; ++it)
 		{
-			ret = module->PostUpdate();
+			Module* module = *it;
+			if (module->IsEnabled())
+			{
+				ret = module->Update();
+			}
+		}
+
+		for (auto it = list_modules.begin(); it != list_modules.end() && ret == UPDATE_CONTINUE; ++it)
+		{
+			Module* module = *it;
+			if (module->IsEnabled())
+			{
+				ret = module->PostUpdate();
+			}
 		}
 	}
 
