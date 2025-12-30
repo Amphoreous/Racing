@@ -25,6 +25,20 @@ bool ModulePlayer::Start()
 {
 	LOG("Creating player car");
 
+	// Clean up existing resources before creating new ones
+	// This prevents memory leaks when Start() is called multiple times (Enable/Disable cycles)
+	if (playerCar)
+	{
+		LOG("Player car already exists - cleaning up before re-creation");
+		delete playerCar;
+		playerCar = nullptr;
+	}
+	if (pushAbility)
+	{
+		delete pushAbility;
+		pushAbility = nullptr;
+	}
+
 	// Start background music (looping)
 	if (App->audio)
 	{
@@ -39,7 +53,7 @@ bool ModulePlayer::Start()
 		return false;
 	}
 
-	// CRITICAL: Get starting position from Tiled map
+	// Get starting position from Tiled map
 	// The "Start" object with Name="Player" is in the "Positions" layer
 	// Layer offset: offsetx="1664" offsety="984"
 
@@ -61,7 +75,7 @@ bool ModulePlayer::Start()
 
 	if (startPos)
 	{
-		// CRITICAL FIX: The "Positions" layer in Tiled has an offset!
+		// The "Positions" layer in Tiled has an offset!
 		// offsetx="1664" offsety="984" (from Map.tmx)
 		// We need to ADD this offset to the object's position
 		const float POSITIONS_LAYER_OFFSET_X = 1664.0f;

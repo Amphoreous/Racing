@@ -20,7 +20,7 @@ struct CollisionInfo
 
 // ModulePhysics: Complete wrapper for Box2D physics engine
 // This module encapsulates ALL Box2D functionality
-// CRITICAL: Game code should NEVER include box2d.h or use b2* types directly
+// Game code should NEVER include box2d.h or use b2* types directly
 // All physics operations must go through this module's interface
 class ModulePhysics : public Module
 {

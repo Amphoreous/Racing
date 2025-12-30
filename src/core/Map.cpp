@@ -25,6 +25,15 @@ bool Map::Init()
 bool Map::Start()
 {
     LOG("Starting Map Module");
+    
+    // If map is already loaded, skip re-loading to prevent duplicates
+    // The map data persists through Enable/Disable cycles once loaded
+    if (mapLoaded)
+    {
+        LOG("Map already loaded - skipping reload");
+        return true;
+    }
+    
     bool ret = Load("assets/map/", "Map.tmx");
 
     if (ret)

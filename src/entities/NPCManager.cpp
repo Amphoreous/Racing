@@ -16,10 +16,6 @@
 #include <algorithm>
 #include <box2d/box2d.h>
 
-#ifndef PI
-#define PI 3.141592653589793f
-#endif
-
 // Estructura para almacenar la info de cada rayo del "Radar"
 struct RaySensor {
     float angleOffset; // Grados relativos al morro (-45, 0, 45, etc)
@@ -58,6 +54,30 @@ NPCManager::~NPCManager()
 bool NPCManager::Start()
 {
     LOG("Creating NPC cars");
+
+    // Clean up existing resources before creating new ones
+    // This prevents memory leaks when Start() is called multiple times (Enable/Disable cycles)
+    if (!npcAbilities.empty())
+    {
+        LOG("NPC abilities already exist - cleaning up before re-creation");
+        for (PushAbility* ability : npcAbilities)
+        {
+            if (ability) delete ability;
+        }
+        npcAbilities.clear();
+    }
+    if (!npcCars.empty())
+    {
+        LOG("NPC cars already exist - cleaning up before re-creation");
+        for (Car* npc : npcCars)
+        {
+            if (npc) delete npc;
+        }
+        npcCars.clear();
+    }
+    // Clear NPC states map too
+    npcStates.clear();
+
     CreateNPC("NPC1", "assets/sprites/npc_1.png");
     CreateNPC("NPC2", "assets/sprites/npc_2.png");
     CreateNPC("NPC3", "assets/sprites/npc_3.png");

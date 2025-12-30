@@ -43,7 +43,7 @@ void BeginContact(b2Contact* contact) override
 		if (bodyB && bodyB->GetCollisionListener())
 			bodyB->GetCollisionListener()->OnCollisionEnter(bodyA);
 		
-		// FIX: NO registrar SENSORES en la lista visual de colisiones (HUD)
+		// NO registrar SENSORES en la lista visual de colisiones (HUD)
 		if (contact->GetFixtureA()->IsSensor() || contact->GetFixtureB()->IsSensor())
 		{
 			return; 
@@ -126,6 +126,32 @@ bool ModulePhysics::Init()
 
 bool ModulePhysics::Start()
 {
+	// If world was destroyed by CleanUp(), recreate it
+	// This happens when the module is re-enabled after being disabled
+	if (!world)
+	{
+		LOG("Recreating physics world in Start()");
+		b2Vec2 gravity(GRAVITY_X, GRAVITY_Y);
+		world = new b2World(gravity);
+		
+		if (!world)
+		{
+			LOG("ERROR: Failed to recreate Box2D world");
+			return false;
+		}
+		
+		// Set up contact listener
+		contactListener = new PhysicsContactListener(this);
+		world->SetContactListener(contactListener);
+		
+		// Create ground body
+		b2BodyDef groundBodyDef;
+		groundBodyDef.type = b2_staticBody;
+		groundBodyDef.position.Set(0.0f, 0.0f);
+		groundBody = world->CreateBody(&groundBodyDef);
+		
+		LOG("Physics world recreated successfully");
+	}
 	return true;
 }
 
@@ -640,7 +666,7 @@ void ModulePhysics::RenderDebug()
 	int overlayW = 370; 
 	int overlayH = 220;  
     
-    // FIX: Position overlay on the RIGHT side
+    // Position overlay on the RIGHT side
     int overlayX = GetScreenWidth() - overlayW - 10; 
 	int overlayY = 10;
 

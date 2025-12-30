@@ -70,13 +70,18 @@ bool Application::Init()
 		ret = module->Init();
 	}
 
-	// After all Init calls we call Start() in all modules
+	// After all Init calls we call Start() in all modules that are ENABLED
 	LOG("Application Start --------------");
 
 	for (auto it = list_modules.begin(); it != list_modules.end() && ret; ++it)
 	{
 		Module* module = *it;
-		ret = module->Start();
+		// Only call Start() on enabled modules
+		// Disabled modules will have Start() called when Enable() is invoked
+		if (module->IsEnabled())
+		{
+			ret = module->Start();
+		}
 	}
 
 	return ret;
