@@ -218,6 +218,47 @@ void Map::CreateCollisionBodies()
         return;
     }
 
+    // Check for tile layer named "Collisions" and create collision bodies for each tile
+    for (const auto& layer : mapData.layers)
+    {
+        // Only process the layer that is exactly named "Collisions"
+        if (layer->name == "Collisions")
+        {
+            for (int y = 0; y < mapData.height; ++y)
+            {
+                for (int x = 0; x < mapData.width; ++x)
+                {
+                    int gid = layer->Get(y, x);
+
+                    // If the tile is not empty (gid != 0), create collision
+                    if (gid != 0)
+                    {
+                        // Calculate world position (x, y are grid indices)
+                        float tileX = x * mapData.tileWidth;
+                        float tileY = y * mapData.tileHeight;
+
+                        // Box2D usually wants the center of the rectangle, so add half the size
+                        float centerX = tileX + (mapData.tileWidth / 2.0f);
+                        float centerY = tileY + (mapData.tileHeight / 2.0f);
+
+                        // Create static body
+                        PhysBody* body = App->physics->CreateRectangle(centerX, centerY, mapData.tileWidth, mapData.tileHeight, PhysBody::BodyType::STATIC);
+                        if (body)
+                        {
+                            LOG("Created tile collision body at (%.1f, %.1f) size (%.1f, %.1f)",
+                                centerX, centerY, (float)mapData.tileWidth, (float)mapData.tileHeight);
+                        }
+                        else
+                        {
+                            LOG("Failed to create tile collision body at (%d, %d)", x, y);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Original code for polygon objects continues here...
     for (const auto& object : mapData.objects)
     {
         // Skip non-collision objects (checkpoints, start positions, etc.)
@@ -228,38 +269,30 @@ void Map::CreateCollisionBodies()
 
         if (object->hasPolygon && !object->polygonPoints.empty())
         {
-            // Triangulate complex polygon into triangles for Box2D
-            std::vector<std::vector<float>> triangles;
-            if (TriangulatePolygon(object->polygonPoints, triangles))
+            // Convert TMX object points to world coordinates
+            std::vector<float> worldVertices;
+            for (const auto& point : object->polygonPoints)
             {
-                // Create collision body for each triangle
-                for (const auto& triangle : triangles)
-                {
-                    // Convert triangle points to world coordinates
-                    std::vector<float> worldVertices;
-                    for (size_t i = 0; i < triangle.size(); i += 2)
-                    {
-                        float worldX = object->x + triangle[i];
-                        float worldY = object->y + triangle[i + 1];
-                        worldVertices.push_back(worldX);
-                        worldVertices.push_back(worldY);
-                    }
+                // TMX objects are relative to the object's position
+                worldVertices.push_back((float)object->x + point.x);
+                worldVertices.push_back((float)object->y + point.y);
+            }
 
-                    PhysBody* body = App->physics->CreatePolygon(0, 0, worldVertices.data(), 3, PhysBody::BodyType::STATIC);
-                    if (body)
-                    {
-                        LOG("Created triangle collision body for object '%s' (%s)",
-                            object->name.c_str(), object->type.c_str());
-                    }
-                    else
-                    {
-                        LOG("Failed to create triangle collision body for object '%s'", object->name.c_str());
-                    }
-                }
+            // Create a single CHAIN (Chain) instead of triangles
+            // Pass worldVertices.size() / 2 because the vector has x,y sequential
+            PhysBody* body = App->physics->CreateChain(0, 0, worldVertices.data(), worldVertices.size() / 2, true);
+
+            if (body)
+            {
+                // Store reference to the map object for terrain type detection
+                body->SetUserData((void*)object);
+
+                LOG("Created CHAIN collision body for object '%s' with %d points",
+                    object->name.c_str(), (int)object->polygonPoints.size());
             }
             else
             {
-                LOG("Failed to triangulate polygon for object '%s'", object->name.c_str());
+                LOG("Failed to create chain body for object '%s'", object->name.c_str());
             }
         }
         else if (object->width > 0 && object->height > 0)
@@ -272,6 +305,9 @@ void Map::CreateCollisionBodies()
             PhysBody* body = App->physics->CreateRectangle(centerX, centerY, object->width, object->height, PhysBody::BodyType::STATIC);
             if (body)
             {
+                // Store reference to the map object for terrain type detection
+                body->SetUserData((void*)object);
+
                 LOG("Created rectangle collision body for object '%s' at (%.1f, %.1f) size (%.1f, %.1f)",
                     object->name.c_str(), centerX, centerY, object->width, object->height);
             }
@@ -664,6 +700,12 @@ void Map::RenderMap() const
     // Render all tile layers
     for (const auto& mapLayer : mapData.layers)
     {
+        // If it's the collision layer, don't draw it
+        if (mapLayer->name == "Collisions")
+        {
+            continue;
+        }
+
         for (int i = 0; i < mapData.height; i++)
         {
             for (int j = 0; j < mapData.width; j++)
