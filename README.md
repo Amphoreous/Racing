@@ -150,5 +150,12 @@ This project is provided under the MIT License. See the LICENSE file for details
 
 ---
 
+## Links
+- **Repository**: https://github.com/Amphoreous/Racing
+- **GitHub Project Board**: https://github.com/orgs/Amphoreous/projects/4
+- **Itch.io Page**: https://amphoreous.itch.io/luma-grand-prix
+
+---
+
 ## Contact
 For issues, feature requests, or support, open an issue in this repository: https://github.com/Amphoreous/Racing/issues

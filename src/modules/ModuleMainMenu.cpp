@@ -32,7 +32,6 @@ bool ModuleMainMenu::Start()
 
 update_status ModuleMainMenu::Update()
 {
-    LOG("Main menu update");
     if (IsKeyPressed(KEY_DOWN))
     {
         currentSelection = (MenuOption)((currentSelection + 1) % COUNT);
@@ -71,7 +70,15 @@ update_status ModuleMainMenu::PostUpdate()
     DrawTexturePro(backgroundTexture, source, dest, origin, 0, WHITE);
     DrawTexturePro(titleTexture, source, dest, origin, 0, WHITE);
     DrawTexturePro(buttonTextures[currentSelection], source, dest, origin, 0, WHITE);
-    DrawTexturePro(selectingTexture, source, dest, origin, 0, WHITE);
+    Rectangle selectingDest = dest;
+    if (currentSelection == OPTIONS) {
+        selectingDest.y += 103;
+    }
+    else if (currentSelection == CREDITS)
+    {
+        selectingDest.y += 206;
+    }
+    DrawTexturePro(selectingTexture, source, selectingDest, origin, 0, WHITE);
     return UPDATE_CONTINUE;
 }
 
