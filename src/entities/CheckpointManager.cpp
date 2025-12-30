@@ -65,12 +65,6 @@ update_status CheckpointManager::Update()
 
 update_status CheckpointManager::PostUpdate()
 {
-	// Debug rendering (only if physics debug mode is active)
-	if (App && App->physics && App->physics->IsDebugMode())
-	{
-		DebugRender();
-	}
-
 	// Draw race finish message if race is complete
 	if (raceFinished)
 	{
@@ -463,97 +457,13 @@ bool CheckpointManager::IsLapComplete() const
 	return true;
 }
 
-void CheckpointManager::DebugRender() const
+int CheckpointManager::GetCrossedCheckpointsCount() const
 {
-	// Draw checkpoint information overlay
-	int yOffset = 180;  // Below physics debug info
-
-	DrawRectangle(10, yOffset, 300, 180, Fade(BLACK, 0.8f));
-	DrawRectangleLines(10, yOffset, 300, 180, raceFinished ? GOLD : GREEN);
-
-	DrawText("=== CHECKPOINTS ===", 20, yOffset + 10, 20, raceFinished ? GOLD : GREEN);
-
-	// Show lap progress
-	const char* lapText = TextFormat("Lap: %d / %d", currentLap, totalLaps);
-	DrawText(lapText, 20, yOffset + 35, 18, raceFinished ? GOLD : WHITE);
-
-	// Show race status
-	if (raceFinished)
-	{
-		DrawText("RACE COMPLETE!", 20, yOffset + 55, 18, GOLD);
-	}
-	else
-	{
-		// Show next checkpoint name
-		const char* nextName = "FL";
-		if (nextCheckpointOrder > 0 && nextCheckpointOrder <= 5)
-		{
-			nextName = TextFormat("C%d", nextCheckpointOrder);
-		}
-		DrawText(TextFormat("Next: %s", nextName), 20, yOffset + 55, 18, YELLOW);
-	}
-
-	// Show checkpoint status
-	int crossed = 0;
+	int count = 0;
 	for (const auto& cp : checkpoints)
 	{
 		if (cp.order > 0 && cp.crossed)
-			crossed++;
+			count++;
 	}
-	DrawText(TextFormat("Progress: %d/%d", crossed, totalCheckpoints), 20, yOffset + 75, 18,
-		crossed == totalCheckpoints ? GREEN : WHITE);
-
-	// Show if ready for finish line
-	if (IsLapComplete() && !raceFinished)
-	{
-		DrawText(">>> READY FOR FINISH! <<<", 20, yOffset + 95, 16, GREEN);
-	}
-
-	// Legend
-	DrawText("Purple = Sensors (hitboxes)", 20, yOffset + 115, 14, PURPLE);
-	DrawText("Cross = Center point", 20, yOffset + 135, 14, WHITE);
-
-	if (raceFinished)
-	{
-		DrawText("Press ESC to exit", 20, yOffset + 155, 14, GRAY);
-	}
-
-	// Draw checkpoint names in world space (within BeginMode2D)
-	for (const auto& checkpoint : checkpoints)
-	{
-		if (!checkpoint.sensor)
-			continue;
-
-		float x, y;
-		checkpoint.sensor->GetPositionF(x, y);
-
-		// Color based on status
-		Color textColor = WHITE;
-		if (raceFinished)
-			textColor = GOLD;
-		else if (checkpoint.crossed)
-			textColor = GREEN;
-		else if (checkpoint.order == nextCheckpointOrder)
-			textColor = YELLOW;
-
-		// Measure text to center it properly
-		const char* nameText = checkpoint.name.c_str();
-		int fontSize = 20;
-		int textWidth = MeasureText(nameText, fontSize);
-
-		// Draw checkpoint name CENTERED above the sensor
-		DrawText(nameText, (int)x - textWidth / 2, (int)y - 50, fontSize, textColor);
-
-		// Draw order number CENTERED below the center
-		const char* orderText = TextFormat("(%d)", checkpoint.order);
-		int orderWidth = MeasureText(orderText, 16);
-		DrawText(orderText, (int)x - orderWidth / 2, (int)y + 30, 16, textColor);
-
-		// Draw a LARGE CROSS at the exact center for verification
-		DrawLine((int)x - 20, (int)y, (int)x + 20, (int)y, textColor);
-		DrawLine((int)x, (int)y - 20, (int)x, (int)y + 20, textColor);
-
-		// Draw a small circle at center
-		DrawCircle((int)x, (int)y, 3, textColor);
-	}
+	return count;
 }

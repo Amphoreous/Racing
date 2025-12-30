@@ -67,10 +67,10 @@ bool ModulePlayer::Start()
 		// Set player car position
 		playerCar->SetPosition(worldX, worldY);
 
-		// Set starting rotation (270° = facing down)
+		// Set starting rotation (270ï¿½ = facing down)
 		playerCar->SetRotation(270.0f);
 
-		LOG("Player car positioned at (%.2f, %.2f) with rotation 270°", worldX, worldY);
+		LOG("Player car positioned at (%.2f, %.2f) with rotation 270ï¿½", worldX, worldY);
 	}
 	else
 	{
@@ -130,15 +130,6 @@ update_status ModulePlayer::PostUpdate()
 	if (pushAbility)
 	{
 		pushAbility->Draw();
-	}
-
-	// Draw ability cooldown UI (optional debug)
-	if (pushAbility && App->physics && App->physics->IsDebugMode())
-	{
-		float progress = pushAbility->GetCooldownProgress();
-		DrawRectangle(10, 350, 200, 30, Fade(BLACK, 0.8f));
-		DrawRectangle(10, 350, (int)(200 * progress), 30, pushAbility->IsReady() ? GREEN : YELLOW);
-		DrawText(pushAbility->IsReady() ? "ABILITY READY" : "COOLDOWN", 15, 355, 20, WHITE);
 	}
 
 	return UPDATE_CONTINUE;

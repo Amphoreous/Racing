@@ -39,15 +39,14 @@ public:
 	// Lap management
 	int GetCurrentLap() const { return currentLap; }
 	int GetNextCheckpointOrder() const { return nextCheckpointOrder; }
+	int GetTotalCheckpoints() const { return totalCheckpoints; }
+	int GetCrossedCheckpointsCount() const;
 	bool IsLapComplete() const;
 
 	// Race completion
 	bool IsRaceFinished() const { return raceFinished; }
 	int GetTotalLaps() const { return totalLaps; }
-
-	// Debug rendering
-	void DebugRender() const;
-
+	
 private:
 	std::vector<Checkpoint> checkpoints;  // All checkpoints including finish line
 	Checkpoint* finishLine;                // Quick reference to finish line

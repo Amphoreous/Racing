@@ -6,6 +6,8 @@
 #include "entities/Player.h"
 #include "entities/Car.h"
 #include "entities/Entity.h"
+#include "entities/CheckpointManager.h"
+#include "entities/PushAbility.h"
 
 #include "box2d/box2d.h"
 #include "box2d/b2_mouse_joint.h"
@@ -737,7 +739,7 @@ void ModulePhysics::RenderDebug()
 
 	// --- Debug Info Overlay (HUD) ---
 
-	int overlayX = 10, overlayY = 10, overlayW = 370, overlayH = 160;
+	int overlayX = 10, overlayY = 10, overlayW = 370, overlayH = 220;  // Increased height for checkpoint info
 	// Use solid black background for readability
 	DrawRectangle(overlayX, overlayY, overlayW, overlayH, BLACK);
 	DrawRectangleLines(overlayX, overlayY, overlayW, overlayH, YELLOW);
@@ -784,6 +786,30 @@ void ModulePhysics::RenderDebug()
 		DrawText(TextFormat("Collisions: %d", collisionCount), overlayX + 10, overlayY + 150, 20, collisionCount > 0 ? RED : GREEN);
 	}
 
+	// Checkpoint/Race information
+	if (App && App->checkpointManager) {
+		// Race status header
+		DrawText("=== RACE INFO ===", overlayX + 10, overlayY + 175, 16, SKYBLUE);
+
+		// Lap progress
+		int currentLap = App->checkpointManager->GetCurrentLap();
+		int totalLaps = App->checkpointManager->GetTotalLaps();
+		DrawText(TextFormat("Lap: %d/%d", currentLap, totalLaps), overlayX + 10, overlayY + 195, 18, App->checkpointManager->IsRaceFinished() ? GOLD : WHITE);
+
+		// Checkpoint progress
+		int crossedCheckpoints = App->checkpointManager->GetCrossedCheckpointsCount();
+		int totalCheckpoints = App->checkpointManager->GetTotalCheckpoints();
+		int nextCheckpoint = App->checkpointManager->GetNextCheckpointOrder();
+
+		const char* nextName = "FL";
+		if (nextCheckpoint > 0 && nextCheckpoint <= totalCheckpoints) {
+			nextName = TextFormat("C%d", nextCheckpoint);
+		}
+
+		DrawText(TextFormat("Next: %s (%d/%d)", nextName, crossedCheckpoints, totalCheckpoints),
+			overlayX + 120, overlayY + 195, 18, YELLOW);
+	}
+
 	// Draw mouse joint line when dragging
 	if (mouseJoint && draggedBody && IsMouseButtonDown(MOUSE_LEFT_BUTTON))
 	{
@@ -792,6 +818,21 @@ void ModulePhysics::RenderDebug()
 		Vector2 screenBodyPos = GetWorldToScreen2D({x, y}, App->renderer->camera);
 		Vector2 mousePos = GetMousePosition();
 		DrawLine((int)screenBodyPos.x, (int)screenBodyPos.y, (int)mousePos.x, (int)mousePos.y, RED);
+	}
+
+	// Push ability cooldown UI
+	if (App && App->player && App->player->GetAbility())
+	{
+		PushAbility* pushAbility = App->player->GetAbility();
+		float progress = pushAbility->GetCooldownProgress();
+		int uiX = 10, uiY = 250, uiW = 200, uiH = 30;
+
+		// Background
+		DrawRectangle(uiX, uiY, uiW, uiH, Fade(BLACK, 0.8f));
+		// Progress bar
+		DrawRectangle(uiX, uiY, (int)(uiW * progress), uiH, pushAbility->IsReady() ? GREEN : YELLOW);
+		// Text
+		DrawText(pushAbility->IsReady() ? "ABILITY READY" : "COOLDOWN", uiX + 5, uiY + 5, 20, WHITE);
 	}
 #endif // NDEBUG
 }

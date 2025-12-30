@@ -175,19 +175,28 @@ void ModuleRender::UpdateCamera()
     else if (cameraMode == CAMERA_FULL_MAP)
     {
         // Full map mode - show entire map
-        // Map dimensions: 2750x1680 pixels
+        // Get map dimensions dynamically from loaded map
+        float mapWidth = 5500.0f;  // Default fallback
+        float mapHeight = 3360.0f; // Default fallback
+        
+        if (App && App->map)
+        {
+            mapWidth = (float)App->map->mapData.width;
+            mapHeight = (float)App->map->mapData.height;
+        }
+        
         // Screen dimensions: 1280x720 pixels
         
         // Center camera on map center
-        camera.target = { 2750.0f * 0.5f, 1680.0f * 0.5f };
+        camera.target = { mapWidth * 0.5f, mapHeight * 0.5f };
         
         // No rotation in full map mode
         camera.rotation = 0.0f;
         
         // Calculate zoom to fit entire map
         // Use the dimension that requires more zoom reduction
-        float zoomX = SCREEN_WIDTH / 2750.0f;
-        float zoomY = SCREEN_HEIGHT / 1680.0f;
+        float zoomX = SCREEN_WIDTH / mapWidth;
+        float zoomY = SCREEN_HEIGHT / mapHeight;
         camera.zoom = (zoomX < zoomY) ? zoomX : zoomY;
         
         // Add some margin (95% of calculated zoom)
