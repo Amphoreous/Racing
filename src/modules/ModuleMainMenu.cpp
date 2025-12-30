@@ -3,6 +3,7 @@
 #include "modules/ModuleResources.h"
 #include "modules/ModuleGame.h"
 #include "modules/ModulePhysics.h"
+#include "modules/ModuleAudio.h"
 #include "entities/Player.h"
 #include "entities/NPCManager.h"
 #include "core/Map.h"
@@ -27,10 +28,25 @@ bool ModuleMainMenu::Start()
     backgroundTexture = App->resources->LoadTexture("assets/ui/backgrounds/main_menu_background.jpg");
     secondaryBackground = App->resources->LoadTexture("assets/ui/backgrounds/second_background.png");
     titleTexture = App->resources->LoadTexture("assets/ui/hud/main_menu_title.png");
-    buttonTextures[START] = App->resources->LoadTexture("assets/ui/hud/main_menu_start_selected.png");
-    buttonTextures[OPTIONS] = App->resources->LoadTexture("assets/ui/hud/main_menu_options_selected.png");
-    buttonTextures[CREDITS] = App->resources->LoadTexture("assets/ui/hud/main_menu_credits_selected.png");
+    
+    // Load non-selected button textures (always visible)
+    buttonTextures[START] = App->resources->LoadTexture("assets/ui/hud/main_menu_start.png");
+    buttonTextures[OPTIONS] = App->resources->LoadTexture("assets/ui/hud/main_menu_options.png");
+    buttonTextures[CREDITS] = App->resources->LoadTexture("assets/ui/hud/main_menu_credits.png");
+    
+    // Load selected button textures (shown when option is highlighted)
+    buttonSelectedTextures[START] = App->resources->LoadTexture("assets/ui/hud/main_menu_start_selected.png");
+    buttonSelectedTextures[OPTIONS] = App->resources->LoadTexture("assets/ui/hud/main_menu_options_selected.png");
+    buttonSelectedTextures[CREDITS] = App->resources->LoadTexture("assets/ui/hud/main_menu_credits_selected.png");
+    
     selectingTexture = App->resources->LoadTexture("assets/ui/hud/main_menu_selecting.png");
+
+    // Load menu sound effects
+    selectSfx = App->audio->LoadFx("assets/audio/fx/checkpoint.wav");
+
+    // Play main menu music
+    App->audio->PlayMusic("assets/audio/music/main_menu_music.mp3");
+    
     return true;
 }
 
@@ -49,6 +65,8 @@ update_status ModuleMainMenu::Update()
         }
         if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE))
         {
+            App->audio->PlayFx(selectSfx);
+            
             if (currentSelection == START)
             {
                 LOG("Starting game from menu");
@@ -124,7 +142,21 @@ void ModuleMainMenu::DrawMainMenu()
     Vector2 origin = {0, 0};
     DrawTexturePro(backgroundTexture, source, dest, origin, 0, WHITE);
     DrawTexturePro(titleTexture, source, dest, origin, 0, WHITE);
-    DrawTexturePro(buttonTextures[currentSelection], source, dest, origin, 0, WHITE);
+    
+    // Draw all three menu options - use selected texture for current selection, normal for others
+    for (int i = 0; i < COUNT; i++)
+    {
+        if (i == currentSelection)
+        {
+            DrawTexturePro(buttonSelectedTextures[i], source, dest, origin, 0, WHITE);
+        }
+        else
+        {
+            DrawTexturePro(buttonTextures[i], source, dest, origin, 0, WHITE);
+        }
+    }
+    
+    // Draw the selector indicator
     Rectangle selectingDest = dest;
     if (currentSelection == OPTIONS) {
         selectingDest.y += 103;
@@ -134,6 +166,12 @@ void ModuleMainMenu::DrawMainMenu()
         selectingDest.y += 206;
     }
     DrawTexturePro(selectingTexture, source, selectingDest, origin, 0, WHITE);
+
+    // Draw copyright notice at the bottom
+    const char* copyright = "(c) Copyright. Amphoreous 2025. All rights reserved.";
+    int copyrightFontSize = 20;
+    float footerY = SCREEN_HEIGHT - 40;
+    DrawText(copyright, 20, (int)footerY, copyrightFontSize, WHITE);
 }
 
 void ModuleMainMenu::DrawOptionsMenu()

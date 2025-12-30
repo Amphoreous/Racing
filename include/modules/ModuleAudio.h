@@ -13,7 +13,7 @@ public:
 	~ModuleAudio();
 
 	bool Init();
-	update_status Update();  // NEW: Required to update music stream
+	update_status Update();
 	bool CleanUp();
 
 	// Play a music file

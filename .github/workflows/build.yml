@@ -48,17 +48,17 @@ jobs:
         )
         $teamString = $teamMembers -join "_"
         $version = "${{ github.event.inputs.version }}"
-        $releaseName = "${teamString}_v${version}"
-        $gameFolder = "$releaseName/Racing"
+        $zipName = $teamString
+        $gameFolder = "LumaGrandPrix"
         
         # Create directories following required structure
         New-Item -ItemType Directory -Path $gameFolder -Force
         
-        # Copy executable (must be named Racing.exe)
+        # Copy executable (renamed to LumaGrandPrix.exe)
         $exeFiles = Get-ChildItem "bin/Release/*.exe"
         if ($exeFiles.Count -gt 0) {
-            Copy-Item $exeFiles[0].FullName -Destination "$gameFolder/Racing.exe"
-            Write-Host "✅ Copied executable: $($exeFiles[0].Name)"
+            Copy-Item $exeFiles[0].FullName -Destination "$gameFolder/LumaGrandPrix.exe"
+            Write-Host "✅ Copied executable: $($exeFiles[0].Name) -> LumaGrandPrix.exe"
         } else {
             Write-Error "❌ No executable found in bin/Release/"
             exit 1
@@ -79,15 +79,15 @@ jobs:
             Write-Warning "⚠️ No assets folder found - this may cause runtime errors"
         }
         
-        # Copy required documentation files to root of release
+        # Copy required documentation files to same folder
         if (Test-Path "LICENSE") {
-            Copy-Item "LICENSE" -Destination $releaseName
-            Write-Host "✅ Copied LICENSE"
+            Copy-Item "LICENSE" -Destination $gameFolder
+            Write-Host "✅ Copied LICENSE to game folder"
         }
         
         if (Test-Path "README.md") {
-            Copy-Item "README.md" -Destination $releaseName
-            Write-Host "✅ Copied README.md"
+            Copy-Item "README.md" -Destination $gameFolder
+            Write-Host "✅ Copied README.md to game folder"
         } else {
             Write-Error "❌ README.md is required for grading"
             exit 1
@@ -99,13 +99,13 @@ jobs:
             Get-ChildItem $gameFolder -Recurse -Include $pattern -ErrorAction SilentlyContinue | Remove-Item -Force
         }
         
-        # Create final ZIP with grading-required naming convention
-        Compress-Archive -Path $releaseName -DestinationPath "$releaseName.zip" -Force
-        Write-Host "✅ Created release ZIP: $releaseName.zip"
+        # Create final ZIP with grading-required naming convention (without version)
+        Compress-Archive -Path $gameFolder -DestinationPath "$zipName.zip" -Force
+        Write-Host "✅ Created release ZIP: $zipName.zip"
         
         # Display final structure for verification
         Write-Host "`n📁 Final release structure:"
-        Get-ChildItem $releaseName -Recurse | ForEach-Object { 
+        Get-ChildItem $gameFolder -Recurse | ForEach-Object { 
             $relativePath = $_.FullName.Replace((Get-Location).Path + "\", "")
             Write-Host "   $relativePath"
         }
@@ -113,16 +113,15 @@ jobs:
 
     - name: Verify Grading Requirements
       run: |
-        $teamString = "GinerSofia_HamdaouiZakaria_MartinezJoel"
-        $releaseName = "${teamString}_v${{ github.event.inputs.version }}"
-        $gameFolder = "$releaseName/Racing"
+        $gameFolder = "LumaGrandPrix"
         
         Write-Host "🔍 Verifying grading requirements..."
         
         # Check required files exist
         $requiredFiles = @(
-            "$releaseName/README.md",
-            "$gameFolder/Racing.exe"
+            "$gameFolder/README.md",
+            "$gameFolder/LumaGrandPrix.exe",
+            "$gameFolder/LICENSE"
         )
         
         $missing = @()
@@ -136,8 +135,8 @@ jobs:
         }
         
         # Verify README.md contains required information
-        if (Test-Path "$releaseName/README.md") {
-            $readme = Get-Content "$releaseName/README.md" -Raw
+        if (Test-Path "$gameFolder/README.md") {
+            $readme = Get-Content "$gameFolder/README.md" -Raw
             
             $requiredContent = @(
                 "Zakaria Hamdaoui",
@@ -165,7 +164,7 @@ jobs:
         $forbiddenPatterns = @("*.cpp", "*.h", "*.c", "*.cs", "*.vcxproj", "*.sln", "*.premake5", "src/*", "include/*", "build/*")
         $forbidden = @()
         foreach ($pattern in $forbiddenPatterns) {
-            $files = Get-ChildItem $releaseName -Recurse -Include $pattern -ErrorAction SilentlyContinue
+            $files = Get-ChildItem $gameFolder -Recurse -Include $pattern -ErrorAction SilentlyContinue
             if ($files) {
                 $forbidden += $files
                 Write-Host "⚠️ Found source file: $($files.Name -join ', ')"
@@ -173,8 +172,8 @@ jobs:
         }
         
         # Check executable works (basic validation)
-        if (Test-Path "$gameFolder/Racing.exe") {
-            $exeInfo = Get-Item "$gameFolder/Racing.exe"
+        if (Test-Path "$gameFolder/LumaGrandPrix.exe") {
+            $exeInfo = Get-Item "$gameFolder/LumaGrandPrix.exe"
             Write-Host "✅ Executable size: $([math]::Round($exeInfo.Length/1MB, 2)) MB"
             Write-Host "✅ Executable created: $($exeInfo.CreationTime)"
         }
@@ -199,7 +198,7 @@ jobs:
     - name: Create Racing Game Release
       uses: softprops/action-gh-release@v1
       with:
-        files: GinerSofia_HamdaouiZakaria_MartinezJoel_v${{ github.event.inputs.version }}.zip
+        files: GinerSofia_HamdaouiZakaria_MartinezJoel.zip
         tag_name: v${{ github.event.inputs.version }}
         name: Luma Grand Prix - Release v${{ github.event.inputs.version }}
         body: |
@@ -247,9 +246,10 @@ jobs:
           - ✅ **No memory leaks** verified with testing tools
           
           ## 📦 Release Contents
-          - **Racing.exe** - Main game executable (Release build, 60 FPS)
+          - **LumaGrandPrix.exe** - Main game executable (Release build, 60 FPS)
           - **Assets folder** - All sprites, maps, audio, and UI elements
           - **README.md** - Complete documentation and team information
+          - **LICENSE** - Project license
           - **Required DLLs** - raylib and Box2D dependencies
           
           ## 🔧 Technical Implementation
@@ -260,7 +260,9 @@ jobs:
           - **Cross-platform** code structure (Windows/Linux/macOS)
           
           ## 🎨 Inspiration
-          No inspiration, all the game code and assets were created from scratch by the team.
+          Our core inspiration draws from Super Mario Galaxy, Super Mario 3D World, Mario Kart 7, Mario Kart World.
+          
+          All gameplay mechanics, level designs, and art assets are entirely original creations.
           
           ## 📊 Development Stats
           - **25 open issues** related to architecture, physics, gameplay, AI, UI, audio, and release tasks
@@ -270,7 +272,7 @@ jobs:
           
           ## 🚀 Installation & Play
           1. Download and extract the ZIP file
-          2. Run `Racing.exe` from the Racing folder
+          2. Run `LumaGrandPrix.exe` from the LumaGrandPrix folder
           3. Use arrow keys to drive, F1 for debug mode
           4. Enjoy the physics-based racing experience!
           
@@ -278,8 +280,9 @@ jobs:
           
           **Repository**: https://github.com/Amphoreous/Racing
           **GitHub Project Board**: https://github.com/orgs/Amphoreous/projects/4
+          **itch.io Page**: https://amphoreous.itch.io/luma-grand-prix
           **Original Template**: https://github.com/TheUnrealZaka/raylib-box2d-quickstart
-          **Submission Date**: October 30, 2025
+          **Submission Date**: December 30, 2025
           
         prerelease: ${{ github.event.inputs.isPrerelease }}
         generate_release_notes: true

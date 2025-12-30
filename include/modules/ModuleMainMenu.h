@@ -34,8 +34,12 @@ private:
     Texture2D backgroundTexture;
     Texture2D secondaryBackground;  // For options/credits screens
     Texture2D titleTexture;
-    Texture2D buttonTextures[COUNT];
+    Texture2D buttonTextures[COUNT];         // Non-selected button textures
+    Texture2D buttonSelectedTextures[COUNT]; // Selected button textures
     Texture2D selectingTexture;
+
+    // Menu sound effects
+    unsigned int selectSfx = 0;
 
     // Helper functions for sub-menus
     void DrawMainMenu();

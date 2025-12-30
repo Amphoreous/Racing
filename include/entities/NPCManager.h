@@ -5,7 +5,7 @@
 #include <vector>
 
 class Car;
-class PushAbility;  // ADDED: Forward declaration
+class PushAbility;
 
 class NPCManager : public Module
 {

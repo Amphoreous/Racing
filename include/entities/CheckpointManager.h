@@ -10,6 +10,16 @@
 class PhysBody;
 class MapObject;
 
+// Race state enumeration
+enum RaceState
+{
+	RACE_GET_READY,  // "GET READY!" pause before intro
+	RACE_INTRO,      // Camera panning around track
+	RACE_COUNTDOWN,  // 3, 2, 1, GO!
+	RACE_RUNNING,    // Race in progress
+	RACE_FINISHED    // Player won
+};
+
 // Checkpoint structure
 struct Checkpoint
 {
@@ -45,8 +55,14 @@ public:
 	int GetCrossedCheckpointsCount() const;
 	bool GetCheckpointPosition(int order, float& x, float& y) const;
 
+	// Race state
+	RaceState GetRaceState() const { return raceState; }
+	bool CanPlayerMove() const { return raceState == RACE_RUNNING; }
+	float GetCountdownValue() const { return countdownTimer; }
+
 	// Win screen rendering (called from ModuleRender in screen space)
 	void DrawWinScreen();
+	void DrawCountdown();
 
 private:
 	// Checkpoint data
@@ -59,12 +75,28 @@ private:
 	int totalCheckpoints;
 	int totalLaps;
 	bool raceFinished;
+	
+	// Intro and countdown
+	RaceState raceState;
+	float getReadyTimer;     // Timer for GET READY pause
+	float getReadyDuration;  // Duration of GET READY pause (3 seconds)
+	float introTimer;
+	float countdownTimer;
+	int lastCountdownNumber;
+	float introDuration;
+	
+	// Intro camera positions
+	float introStartX, introStartY;
+	float introEndX, introEndY;
+	float introEndRotation;  // Player's starting rotation
 
 	// Player reference
 	PhysBody* playerBody;
 
 	// Sound effects
 	unsigned int lapCompleteSfxId;
+	unsigned int countdownBeepSfxId;
+	unsigned int countdownGoSfxId;
 
 	// Win screen
 	Texture2D winBackground;
@@ -76,4 +108,7 @@ private:
 	Checkpoint* FindCheckpointBySensor(PhysBody* sensor);
 	bool ValidateCheckpointSequence(int checkpointOrder);
 	void ResetCheckpoints();
+	void UpdateGetReady();
+	void UpdateIntro();
+	void UpdateCountdown();
 };

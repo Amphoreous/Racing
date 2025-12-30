@@ -105,11 +105,6 @@ public:
 	// Create a distance joint (rope/spring connection between two bodies)
 	// Create a revolute joint (hinge/pin connection)
 	// Create a prismatic joint (slider connection)
-	// Note: Joint creation methods can be added as needed
-
-	// For internal use only - don't call from game code
-	// These are for PhysBody wrapper only
-	b2World* GetB2World() const { return world; }
 
 	// Public method to render debug overlay
 	void RenderDebug();

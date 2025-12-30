@@ -18,7 +18,7 @@ public:
 	bool Init(Application* app, bool isPlayerAbility = false);
 
 	// Activate the ability at the player's position with player's rotation
-	void Activate(float playerX, float playerY, float playerRotation, Car* activatingCar = nullptr);  // CHANGED: Added activatingCar parameter
+	void Activate(float playerX, float playerY, float playerRotation, Car* activatingCar = nullptr);
 
 	// Update ability (handles animation, duration, effects)
 	void Update();
@@ -53,7 +53,7 @@ private:
 	float playerRotation;       // Player's rotation when ability was activated
 	float pushRadius;           // Radius of effect (pixels)
 	float pushForce;            // Force applied to enemies (pixels/second)
-	Car* activatingCar;         // ADDED: The car that activated this ability (to exclude from push)
+	Car* activatingCar;         // The car that activated this ability (to exclude from push)
 
 	// Visual effect
 	Texture2D effectTexture;    // space_effect.png

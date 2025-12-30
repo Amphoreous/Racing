@@ -34,10 +34,10 @@ public:
 	ModuleGame(Application* app, bool start_enabled = true);
 	~ModuleGame();
 
-	bool Start();
-	update_status Update();
-	update_status PostUpdate();
-	bool CleanUp();
+	bool Start() override;
+	update_status Update() override;
+	update_status PostUpdate() override;
+	bool CleanUp() override;
 
 	// Resource access (for demonstration purposes)
 	int GetLoadedResourceCount() const;
@@ -47,12 +47,20 @@ public:
 	// screenSpace: true = render centered on screen, false = render centered on camera in world space
 	void RenderTiledBackground(bool screenSpace = false) const;
 
+	// Render in-game HUD (speedometer, lap counter)
+	void DrawHUD() const;
+
 private:
 	// Game elements stored with their textures managed by ModuleResources
 	std::vector<GameElement> gameElements;
 	
 	// Background texture for tiled rendering
 	Texture2D backgroundTexture;
+
+	// HUD textures
+	Texture2D speedometerTexture;
+	Texture2D speedometerNeedleTexture;
+	Texture2D lapCounterTexture;
 	
 	// Helper method to load game textures
 	void LoadGameTextures();

@@ -10,6 +10,7 @@
 #include "core/Map.h"
 #include "entities/CheckpointManager.h"
 #include "modules/ModuleMainMenu.h"
+#include "modules/ModuleIntro.h"
 
 #include "core/Application.h"
 
@@ -22,9 +23,10 @@ Application::Application()
 	audio = new ModuleAudio(this, true);
 	physics = new ModulePhysics(this);
 	player = new ModulePlayer(this);
-	npcManager = new NPCManager(this);  // AÑADIR ESTA LÍNEA
+	npcManager = new NPCManager(this);
 	checkpointManager = new CheckpointManager(this);
 	mainMenu = new ModuleMainMenu(this);
+	intro = new ModuleIntro(this);
 	renderer = new ModuleRender(this);
 
 	// Module initialization order matters - resources first, rendering last
@@ -34,8 +36,9 @@ Application::Application()
 	AddModule(audio);
 	AddModule(map);
 	AddModule(player);     // Player car
-	AddModule(npcManager); // AÑADIR ESTA LÍNEA - NPC cars after player
+	AddModule(npcManager); // NPC cars after player
 	AddModule(checkpointManager);
+	AddModule(intro);      // Intro screen
 	AddModule(mainMenu);
 	AddModule(physics);    // Physics debug render - on top of car
 	AddModule(renderer);
@@ -47,6 +50,7 @@ Application::Application()
 	npcManager->Disable();
 	map->Disable();
 	checkpointManager->Disable();
+	mainMenu->Disable(); // Disabled until intro finishes
 }
 
 Application::~Application()
@@ -92,10 +96,33 @@ update_status Application::Update()
 {
 	update_status ret = UPDATE_CONTINUE;
 
-	if (state == GAME_MENU)
+	if (state == GAME_INTRO)
 	{
-		// Only update menu and renderer for drawing
+		// Only update intro and renderer
 		ret = renderer->PreUpdate();
+		if (ret == UPDATE_CONTINUE)
+		{
+			ret = intro->Update();
+		}
+		if (ret == UPDATE_CONTINUE)
+		{
+			ret = intro->PostUpdate();
+		}
+		if (ret == UPDATE_CONTINUE)
+		{
+			ret = renderer->PostUpdate();
+		}
+	}
+	else if (state == GAME_MENU)
+	{
+		// Update audio for music playback
+		ret = audio->Update();
+		
+		// Only update menu and renderer for drawing
+		if (ret == UPDATE_CONTINUE)
+		{
+			ret = renderer->PreUpdate();
+		}
 		if (ret == UPDATE_CONTINUE)
 		{
 			ret = mainMenu->Update();

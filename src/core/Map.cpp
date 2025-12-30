@@ -382,7 +382,7 @@ bool Map::Load(const std::string& path, const std::string& fileName)
 	bool inObjectGroup = false;
 	bool inObject = false;
 	bool inImageLayer = false;
-	bool inProperties = false;  // AÑADIR ESTA LÍNEA
+	bool inProperties = false;
 	MapLayer* currentLayer = nullptr;
 	TileSet* currentTileset = nullptr;
 	MapObject* currentObject = nullptr;
@@ -564,7 +564,7 @@ bool Map::Load(const std::string& path, const std::string& fileName)
 			}
 		}
 
-		// AÑADIR ESTAS LÍNEAS PARA PARSEAR PROPIEDADES
+		// Parse object properties
 		if (inObject && line.find("<properties>") != std::string::npos)
 		{
 			inProperties = true;
@@ -586,7 +586,6 @@ bool Map::Load(const std::string& path, const std::string& fileName)
 		{
 			inProperties = false;
 		}
-		// FIN DE LAS LÍNEAS AÑADIDAS
 
 // Parse polygon or polyline data
         bool isPolygon = (line.find("<polygon ") != std::string::npos);

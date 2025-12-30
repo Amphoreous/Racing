@@ -63,8 +63,13 @@ update_status ModuleRender::Update()
 
     ClearBackground(background);
 
-    // In full map view, render background in screen space (static)
-    if (cameraMode == CAMERA_FULL_MAP && App && App->scene_intro)
+    // Check if we're in intro/get ready state (zoomed out view)
+    bool isIntroState = App && App->checkpointManager && 
+        (App->checkpointManager->GetRaceState() == RACE_GET_READY || 
+         App->checkpointManager->GetRaceState() == RACE_INTRO);
+
+    // In full map view or intro, render background in screen space (static)
+    if ((cameraMode == CAMERA_FULL_MAP || isIntroState) && App && App->scene_intro)
     {
         // Render background centered on screen for full map view
         App->scene_intro->RenderTiledBackground(true);  // screenSpace = true
@@ -72,8 +77,8 @@ update_status ModuleRender::Update()
 
     BeginMode2D(camera);
 
-    // In follow car modes, render background within camera space (follows camera)
-    if (cameraMode != CAMERA_FULL_MAP && App && App->scene_intro)
+    // In follow car modes (not intro), render background within camera space (follows camera)
+    if (cameraMode != CAMERA_FULL_MAP && !isIntroState && App && App->scene_intro)
     {
         App->scene_intro->RenderTiledBackground(false);  // screenSpace = false
     }
@@ -103,10 +108,30 @@ update_status ModuleRender::PostUpdate()
         App->physics->RenderDebug();
     }
 
-    // Render win screen in screen space (covers everything)
-    if (App && App->checkpointManager && App->checkpointManager->IsRaceFinished())
+    // Only render race overlays when actually playing the game (not in menu)
+    if (App && App->state == GAME_PLAYING)
     {
-        App->checkpointManager->DrawWinScreen();
+        // Draw in-game HUD (speedometer, lap counter) in screen space
+        if (App->scene_intro)
+        {
+            App->scene_intro->DrawHUD();
+        }
+
+        // Render countdown/intro overlay in screen space
+        if (App->checkpointManager)
+        {
+            RaceState state = App->checkpointManager->GetRaceState();
+            if (state == RACE_GET_READY || state == RACE_INTRO || state == RACE_COUNTDOWN)
+            {
+                App->checkpointManager->DrawCountdown();
+            }
+        }
+
+        // Render win screen in screen space (covers everything)
+        if (App->checkpointManager && App->checkpointManager->IsRaceFinished())
+        {
+            App->checkpointManager->DrawWinScreen();
+        }
     }
 
     EndDrawing();
@@ -161,6 +186,14 @@ void ModuleRender::UpdateCamera()
     {
         screenShakeAmount -= 50.0f * GetFrameTime(); // Reduce over time
         if (screenShakeAmount < 0) screenShakeAmount = 0;
+    }
+
+    // During get ready and intro, camera is controlled by CheckpointManager
+    if (App->checkpointManager && 
+        (App->checkpointManager->GetRaceState() == RACE_GET_READY || 
+         App->checkpointManager->GetRaceState() == RACE_INTRO))
+    {
+        return; // Camera is being controlled by intro sequence
     }
 
     if (cameraMode == CAMERA_FOLLOW_CAR)

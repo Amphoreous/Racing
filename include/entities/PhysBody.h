@@ -104,6 +104,9 @@ public:
 	void SetSensor(bool isSensor);
 	bool IsSensor() const;
 	
+	// Check if this body is a real obstacle (static, non-sensor)
+	bool IsStaticObstacle() const;
+	
 	// Set collision category (what I am)
 	void SetCategoryBits(unsigned short category);
 	
@@ -132,16 +135,16 @@ public:
 	void SetCollisionListener(CollisionListener* listener);
 	CollisionListener* GetCollisionListener() const;
 
-	// For internal use only - don't call from game code
-	// These are used internally by ModulePhysics
+private:
+	// Allow ModulePhysics to access internal Box2D body
+	friend class ModulePhysics;
+	
 	b2Body* GetB2Body() const { return body; }
 	void SetB2Body(b2Body* b) { body = b; }
-
-private:
+	
 	b2Body* body;
 	void* userData;
 	CollisionListener* collisionListener;
 
-	// Helper to get the first fixture (most bodies have only one)
 	b2Fixture* GetMainFixture() const;
 };

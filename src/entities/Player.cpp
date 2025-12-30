@@ -4,6 +4,7 @@
 #include "core/Map.h"
 #include "entities/Car.h"
 #include "entities/NPCManager.h"
+#include "entities/CheckpointManager.h"
 #include "modules/ModulePhysics.h"
 #include "modules/ModuleAudio.h"
 #include "modules/ModuleResources.h"
@@ -138,6 +139,14 @@ bool ModulePlayer::Start()
 update_status ModulePlayer::Update()
 {
 	if (!playerCar)
+		return UPDATE_CONTINUE;
+
+	// Don't update if race is finished
+	if (App->checkpointManager && App->checkpointManager->IsRaceFinished())
+		return UPDATE_CONTINUE;
+
+	// Don't allow control during intro/countdown
+	if (App->checkpointManager && !App->checkpointManager->CanPlayerMove())
 		return UPDATE_CONTINUE;
 
 	// Handle player input

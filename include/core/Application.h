@@ -13,12 +13,14 @@ class ModuleGame;
 class ModuleResources;
 class ModulePlayer;
 class ModuleMainMenu;
+class ModuleIntro;
 class NPCManager;
 class Map;
 class CheckpointManager;
 
 enum GameState
 {
+    GAME_INTRO,
     GAME_MENU,
     GAME_PLAYING
 };
@@ -38,8 +40,9 @@ public:
 	Map* map;
 	CheckpointManager* checkpointManager;
 	ModuleMainMenu* mainMenu;
+	ModuleIntro* intro;
 
-	GameState state = GAME_MENU;
+	GameState state = GAME_INTRO;
 
 private:
 

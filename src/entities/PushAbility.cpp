@@ -89,7 +89,7 @@ void PushAbility::Activate(float playerX, float playerY, float rotation, Car* ac
 	}
 
 	LOG("=== PUSH ABILITY ACTIVATED ===");
-	LOG("Position: (%.1f, %.1f), Rotation: %.1f°", playerX, playerY, rotation);
+	LOG("Position: (%.1f, %.1f), Rotation: %.1fï¿½", playerX, playerY, rotation);
 
 	// Play ability.wav
 	if (app && app->audio && abilitySfxId > 0)
@@ -184,8 +184,8 @@ void PushAbility::Draw() const
 	{
 		DrawCircleLines((int)centerX, (int)centerY, pushRadius, ColorAlpha(YELLOW, 0.5f));
 		DrawText("PUSH AREA", (int)centerX - 40, (int)centerY - 10, 20, YELLOW);
-		DrawText(TextFormat("Rot: %.1f°", playerRotation), (int)centerX - 40, (int)centerY + 10, 16, YELLOW);
-		DrawText(TextFormat("Total: %.1f°", totalRotation), (int)centerX - 40, (int)centerY + 30, 16, YELLOW);
+		DrawText(TextFormat("Rot: %.1fï¿½", playerRotation), (int)centerX - 40, (int)centerY + 10, 16, YELLOW);
+		DrawText(TextFormat("Total: %.1fï¿½", totalRotation), (int)centerX - 40, (int)centerY + 30, 16, YELLOW);
 		DrawText(TextFormat("Size: %.0fx%.0f", currentWidth, currentHeight), (int)centerX - 40, (int)centerY + 50, 16, YELLOW);
 	}
 }
@@ -238,15 +238,15 @@ void PushAbility::ApplyPushToNearbyNPCs()
 	float forceMult = 1.0f - (activeTimer / activeDuration);
 	forceMult = forceMult * forceMult;
 
-	std::vector<Car*> allCars;  // Lista de TODOS los coches (jugador + NPCs)
+	std::vector<Car*> allCars;  // List of ALL cars (player + NPCs)
 
-	// Añadir jugador
+	// Add player
 	if (app->player && app->player->GetCar())
 	{
 		allCars.push_back(app->player->GetCar());
 	}
 
-	// Añadir todos los NPCs
+	// Add all NPCs
 	const std::vector<Car*>& npcs = app->npcManager->GetNPCs();
 	for (Car* npc : npcs)
 	{
@@ -258,7 +258,7 @@ void PushAbility::ApplyPushToNearbyNPCs()
 
 	int pushedCount = 0;
 
-	// Empujar TODOS los coches cercanos (jugador + NPCs)
+	// Push ALL nearby cars (player + NPCs)
 	for (Car* car : allCars)
 	{
 		if (!car || !car->GetPhysBody())
@@ -275,7 +275,7 @@ void PushAbility::ApplyPushToNearbyNPCs()
 		float dy = carY - centerY;
 		float distance = sqrtf(dx * dx + dy * dy);
 
-		// Si el coche está dentro del radio
+		// If car is within radius
 		if (distance < pushRadius)
 		{
 			// Protect against division by zero

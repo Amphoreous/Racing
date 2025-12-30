@@ -4,6 +4,7 @@
 #include "modules/ModulePhysics.h"
 #include "modules/ModuleAudio.h"
 #include "modules/ModuleResources.h"
+#include "modules/ModuleRender.h"
 #include "entities/Player.h"
 #include "entities/NPCManager.h"
 #include "entities/Car.h"
@@ -20,8 +21,19 @@ CheckpointManager::CheckpointManager(Application* app, bool start_enabled)
 	, raceFinished(false)
 	, playerBody(nullptr)
 	, lapCompleteSfxId(0)
+	, countdownBeepSfxId(0)
+	, countdownGoSfxId(0)
 	, winBackground({0})
 	, winBackgroundLoaded(false)
+	, raceState(RACE_INTRO)
+	, introTimer(0.0f)
+	, countdownTimer(4.0f)
+	, lastCountdownNumber(4)
+	, introDuration(3.0f)
+	, introStartX(0.0f)
+	, introStartY(0.0f)
+	, introEndX(0.0f)
+	, introEndY(0.0f)
 {
 }
 
@@ -46,6 +58,15 @@ bool CheckpointManager::Start()
 	currentLap = 1;
 	nextCheckpointOrder = 1;
 	raceFinished = false;
+	
+	// Initialize get ready, intro and countdown
+	raceState = RACE_GET_READY;
+	getReadyTimer = 0.0f;
+	getReadyDuration = 3.0f;  // 3 second pause showing "GET READY!"
+	introTimer = 0.0f;
+	countdownTimer = 4.0f;
+	lastCountdownNumber = 4;
+	introDuration = 3.0f;
 
 	if (App->player && App->player->GetCar())
 	{
@@ -60,38 +81,171 @@ bool CheckpointManager::Start()
 
 	LoadCheckpointsFromMap();
 
-	// Load checkpoint.wav
+	// Load sound effects
 	if (App->audio)
 	{
 		lapCompleteSfxId = App->audio->LoadFx("assets/audio/fx/checkpoint.wav");
+		countdownBeepSfxId = App->audio->LoadFx("assets/audio/fx/checkpoint.wav"); // Reuse checkpoint sound for countdown beeps
+	}
+	
+	// Set up intro camera path - pan from map overview to player position
+	// Start at map center (overview) - convert tile coordinates to pixel coordinates
+	if (App->map)
+	{
+		introStartX = (float)(App->map->mapData.width * App->map->mapData.tileWidth) * 0.5f;
+		introStartY = (float)(App->map->mapData.height * App->map->mapData.tileHeight) * 0.5f;
+	}
+	else
+	{
+		introStartX = 2750.0f;
+		introStartY = 1680.0f;
+	}
+	
+	// End at player position and rotation
+	if (App->player && App->player->GetCar())
+	{
+		App->player->GetCar()->GetPosition(introEndX, introEndY);
+		introEndRotation = -App->player->GetCar()->GetRotation(); // Negated for camera
+	}
+	else
+	{
+		introEndX = 2000.0f;
+		introEndY = 1400.0f;
+		introEndRotation = 0.0f;
 	}
 
 	LOG("CheckpointManager initialized - %d checkpoints loaded", (int)checkpoints.size());
 	LOG("Race configuration: %d laps, %d checkpoints per lap", totalLaps, totalCheckpoints);
 	LOG("Current lap: %d, Next checkpoint: %d", currentLap, nextCheckpointOrder);
+	LOG("Starting race intro - camera will pan from (%.0f, %.0f) to (%.0f, %.0f)", 
+	    introStartX, introStartY, introEndX, introEndY);
 
 	return true;
 }
 
 update_status CheckpointManager::Update()
 {
-	if (raceFinished)
+	switch (raceState)
 	{
-		// Freeze all game updates by disabling game modules
-		if (App->player && App->player->IsEnabled())
+	case RACE_GET_READY:
+		UpdateGetReady();
+		break;
+	case RACE_INTRO:
+		UpdateIntro();
+		break;
+	case RACE_COUNTDOWN:
+		UpdateCountdown();
+		break;
+	case RACE_RUNNING:
+		// Normal race logic handled elsewhere
+		break;
+	case RACE_FINISHED:
+		// Win state - nothing to update
+		break;
+	}
+	
+	return UPDATE_CONTINUE;
+}
+
+void CheckpointManager::UpdateGetReady()
+{
+	// Clamp delta time to prevent skipping due to long loading frame
+	float deltaTime = GetFrameTime();
+	if (deltaTime > 0.1f) deltaTime = 0.1f; // Cap at 100ms per frame
+	
+	getReadyTimer += deltaTime;
+	
+	// Set camera to overview position (zoomed out, no rotation)
+	if (App->renderer)
+	{
+		App->renderer->camera.target.x = introStartX;
+		App->renderer->camera.target.y = introStartY;
+		App->renderer->camera.rotation = 0.0f;
+		App->renderer->camera.zoom = 0.15f;  // Zoomed out overview
+	}
+	
+	// Transition to intro (camera pan) when GET READY pause is done
+	if (getReadyTimer >= getReadyDuration)
+	{
+		raceState = RACE_INTRO;
+		introTimer = 0.0f;
+		LOG("GET READY complete - starting intro camera pan");
+	}
+}
+
+void CheckpointManager::UpdateIntro()
+{
+	// Clamp delta time to prevent skipping intro due to long loading frame
+	float deltaTime = GetFrameTime();
+	if (deltaTime > 0.1f) deltaTime = 0.1f; // Cap at 100ms per frame
+	
+	introTimer += deltaTime;
+	
+	// Calculate interpolation factor (0 to 1)
+	float t = introTimer / introDuration;
+	if (t > 1.0f) t = 1.0f;
+	
+	// Smooth easing (ease-in-out)
+	float smoothT = t * t * (3.0f - 2.0f * t);
+	
+	// Interpolate camera position
+	float camX = introStartX + (introEndX - introStartX) * smoothT;
+	float camY = introStartY + (introEndY - introStartY) * smoothT;
+	
+	// Update camera target directly
+	if (App->renderer)
+	{
+		App->renderer->camera.target.x = camX;
+		App->renderer->camera.target.y = camY;
+		
+		// Smooth rotation from 0 to player's starting rotation
+		App->renderer->camera.rotation = introEndRotation * smoothT;
+		
+		// Zoom from overview to normal
+		float startZoom = 0.15f;
+		float endZoom = 1.0f;
+		App->renderer->camera.zoom = startZoom + (endZoom - startZoom) * smoothT;
+	}
+	
+	// Transition to countdown when intro is done
+	if (introTimer >= introDuration)
+	{
+		raceState = RACE_COUNTDOWN;
+		countdownTimer = 4.0f;
+		lastCountdownNumber = 4;
+		LOG("Intro complete - starting countdown");
+	}
+}
+
+void CheckpointManager::UpdateCountdown()
+{
+	countdownTimer -= GetFrameTime();
+	
+	// Get current countdown number
+	int currentNumber = (int)countdownTimer;
+	
+	// Play beep sound when number changes
+	if (currentNumber != lastCountdownNumber && currentNumber >= 0)
+	{
+		lastCountdownNumber = currentNumber;
+		if (App->audio && countdownBeepSfxId > 0 && currentNumber > 0)
 		{
-			App->player->Disable();
-		}
-		if (App->npcManager && App->npcManager->IsEnabled())
-		{
-			App->npcManager->Disable();
-		}
-		if (App->physics && App->physics->IsEnabled())
-		{
-			App->physics->Disable();
+			App->audio->PlayFx(countdownBeepSfxId);
 		}
 	}
-	return UPDATE_CONTINUE;
+	
+	// Transition to racing when countdown reaches 0
+	if (countdownTimer <= 0.0f)
+	{
+		raceState = RACE_RUNNING;
+		LOG("GO! Race started!");
+		
+		// Play a "GO" sound (reuse beep for now)
+		if (App->audio && countdownBeepSfxId > 0)
+		{
+			App->audio->PlayFx(countdownBeepSfxId);
+		}
+	}
 }
 
 update_status CheckpointManager::PostUpdate()
@@ -135,7 +289,7 @@ void CheckpointManager::DrawWinScreen()
 		GOLD);
 
 	// Draw position text
-	const char* positionText = "1st Place!";
+	const char* positionText = "Race Complete!";
 	int posFontSize = 50;
 	int posWidth = MeasureText(positionText, posFontSize);
 	DrawText(positionText,
@@ -154,15 +308,89 @@ void CheckpointManager::DrawWinScreen()
 		lapsFontSize,
 		LIGHTGRAY);
 
-	// Draw exit instructions
-	const char* exitText = "Press ESC to exit";
-	int exitFontSize = 24;
-	int exitWidth = MeasureText(exitText, exitFontSize);
-	DrawText(exitText,
-		SCREEN_WIDTH / 2 - exitWidth / 2,
-		SCREEN_HEIGHT / 2 + 120,
-		exitFontSize,
-		GRAY);
+}
+
+void CheckpointManager::DrawCountdown()
+{
+	if (raceState == RACE_GET_READY || raceState == RACE_INTRO)
+	{
+		// Draw "GET READY" text during get ready and intro phases
+		const char* readyText = "GET READY!";
+		int fontSize = 60;
+		int textWidth = MeasureText(readyText, fontSize);
+		
+		// Draw shadow
+		DrawText(readyText,
+			SCREEN_WIDTH / 2 - textWidth / 2 + 3,
+			SCREEN_HEIGHT / 2 - 30 + 3,
+			fontSize,
+			BLACK);
+		
+		// Draw text
+		DrawText(readyText,
+			SCREEN_WIDTH / 2 - textWidth / 2,
+			SCREEN_HEIGHT / 2 - 30,
+			fontSize,
+			YELLOW);
+	}
+	else if (raceState == RACE_COUNTDOWN)
+	{
+		int currentNumber = (int)countdownTimer;
+		
+		if (currentNumber > 0)
+		{
+			// Draw countdown number (3, 2, 1)
+			const char* numText = TextFormat("%d", currentNumber);
+			int fontSize = 200;
+			int textWidth = MeasureText(numText, fontSize);
+			
+			// Pulsing effect based on fractional part of timer
+			float pulse = 1.0f + 0.2f * (countdownTimer - (float)currentNumber);
+			int displaySize = (int)(fontSize * pulse);
+			int displayWidth = MeasureText(numText, displaySize);
+			
+			// Color based on number
+			Color numColor;
+			if (currentNumber == 3) numColor = RED;
+			else if (currentNumber == 2) numColor = ORANGE;
+			else numColor = YELLOW;
+			
+			// Draw shadow
+			DrawText(numText,
+				SCREEN_WIDTH / 2 - displayWidth / 2 + 5,
+				SCREEN_HEIGHT / 2 - displaySize / 2 + 5,
+				displaySize,
+				BLACK);
+			
+			// Draw number
+			DrawText(numText,
+				SCREEN_WIDTH / 2 - displayWidth / 2,
+				SCREEN_HEIGHT / 2 - displaySize / 2,
+				displaySize,
+				numColor);
+		}
+		else
+		{
+			// Draw "GO!" when countdown reaches 0
+			const char* goText = "GO!";
+			int fontSize = 200;
+			int textWidth = MeasureText(goText, fontSize);
+			
+			// Draw shadow
+			DrawText(goText,
+				SCREEN_WIDTH / 2 - textWidth / 2 + 5,
+				SCREEN_HEIGHT / 2 - fontSize / 2 + 5,
+				fontSize,
+				BLACK);
+			
+			// Draw GO!
+			DrawText(goText,
+				SCREEN_WIDTH / 2 - textWidth / 2,
+				SCREEN_HEIGHT / 2 - fontSize / 2,
+				fontSize,
+				GREEN);
+		}
+	}
 }
 
 bool CheckpointManager::CleanUp()

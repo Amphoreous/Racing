@@ -43,7 +43,7 @@ void BeginContact(b2Contact* contact) override
 		if (bodyB && bodyB->GetCollisionListener())
 			bodyB->GetCollisionListener()->OnCollisionEnter(bodyA);
 		
-		// NO registrar SENSORES en la lista visual de colisiones (HUD)
+		// Do NOT record SENSORS in the visual collision list (HUD)
 		if (contact->GetFixtureA()->IsSensor() || contact->GetFixtureB()->IsSensor())
 		{
 			return; 
@@ -470,7 +470,7 @@ public:
 	
 float ReportFixture(b2Fixture* fixture, const b2Vec2& point, const b2Vec2& normal, float fraction) override
 	{
-		// Ignorar sensores en raycasts
+		// Ignore sensors in raycasts
 		if (fixture->IsSensor()) return -1.0f; 
 
 		this->hit = true;
@@ -539,7 +539,6 @@ int ModulePhysics::QueryArea(float minX, float minY, float maxX, float maxY, std
 // Debug rendering
 void ModulePhysics::DebugDraw()
 {
-#ifndef NDEBUG
 	if (!world) return;
 
 	for (b2Body* b = world->GetBodyList(); b; b = b->GetNext())
@@ -654,13 +653,11 @@ void ModulePhysics::DebugDraw()
 		float sepY = collision.y + collision.normalY * collision.separation * 10.0f;
 		DrawCircle((int)sepX, (int)sepY, 2, sepColor);
 	}
-#endif // NDEBUG
 }
 
 // Public method to render debug overlay (called from ModuleRender after EndMode2D)
 void ModulePhysics::RenderDebug()
 {
-#ifndef NDEBUG
 	if (!world) return;
 
 	int overlayW = 370; 
@@ -761,7 +758,6 @@ void ModulePhysics::RenderDebug()
 		// Text
 		DrawText(pushAbility->IsReady() ? "ABILITY READY" : "COOLDOWN", uiX + 5, uiY + 5, 20, WHITE);
 	}
-#endif // NDEBUG
 }
 
 void ModulePhysics::HandleMouseJoint()

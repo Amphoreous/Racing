@@ -256,6 +256,21 @@ bool PhysBody::IsSensor() const
 	return fixture->IsSensor();
 }
 
+bool PhysBody::IsStaticObstacle() const
+{
+	if (!body) return false;
+	if (body->GetType() != b2_staticBody) return false;
+	
+	// Check all fixtures - if any is a sensor, it's not a real obstacle
+	const b2Fixture* fixture = body->GetFixtureList();
+	while (fixture)
+	{
+		if (fixture->IsSensor()) return false;
+		fixture = fixture->GetNext();
+	}
+	return true;
+}
+
 void PhysBody::SetCategoryBits(unsigned short category)
 {
 	b2Fixture* fixture = GetMainFixture();
