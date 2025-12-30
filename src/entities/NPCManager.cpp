@@ -10,22 +10,33 @@
 #include <cmath>
 #include <map>
 #include <string>
+#include <vector>
+#include <algorithm>
 #include <box2d/box2d.h>
 
 #ifndef PI
 #define PI 3.141592653589793f
 #endif
 
-// Data structure to store AI state for debugging
+// Estructura para almacenar la info de cada rayo del "Radar"
+struct RaySensor {
+    float angleOffset; // Grados relativos al morro (-45, 0, 45, etc)
+    float distance;    // Distancia detectada
+    bool hit;          // Si chocó con algo
+};
+
 struct NPCState {
     int targetIndex;
     std::string stateName;
-    float debugRayLeftFactor; // 0.0 = clear, 1.0 = hit
-    float debugRayRightFactor;
-    float debugRayCenterFactor;
+    
+    // Para visualización debug
+    std::vector<RaySensor> sensors;
+    int bestRayIndex; // El rayo elegido
+
+    // Detección de atascos
     bool stuck;
     float stuckTimer;
-    float reverseSteerDir; // Direction to steer when reversing
+    float reverseSteerDir;
 };
 
 static std::map<Car*, NPCState> npcStates;
@@ -61,14 +72,12 @@ update_status NPCManager::Update()
 	return UPDATE_CONTINUE;
 }
 
-// Helper to check if a body is a valid obstacle (Wall)
+// Helper: Detecta solo muros estáticos reales
 bool IsRealObstacle(PhysBody* body) {
     if (!body || !body->GetB2Body()) return false;
-    
-    // Ignore dynamic bodies (other cars)
     if (body->GetB2Body()->GetType() != b2_staticBody) return false;
 
-    // Check if it's a sensor (Checkpoints are sensors)
+    // Ignorar sensores (checkpoints)
     const b2Fixture* fixture = body->GetB2Body()->GetFixtureList();
     while (fixture) {
         if (fixture->IsSensor()) return false; 
@@ -81,17 +90,28 @@ void NPCManager::UpdateAI(Car* npc)
 {
     if (!npc || !App->checkpointManager) return;
 
-    // Initialize state if new
+    // Inicializar estado
     if (npcStates.find(npc) == npcStates.end()) {
-        npcStates[npc] = { 1, "IDLE", 0.0f, 0.0f, 0.0f, false, 0.0f, 1.0f };
+        npcStates[npc] = { 1, "INIT", {}, 2, false, 0.0f, 0.0f };
+        // Definir los 5 sensores del radar (ángulos en grados)
+        // Cubrimos un abanico amplio para "ver" las curvas cerradas
+        npcStates[npc].sensors = {
+            { -60.0f, 0.0f, false }, // Izquierda Extrema
+            { -30.0f, 0.0f, false }, // Izquierda Diagonal
+            {   0.0f, 0.0f, false }, // Centro
+            {  30.0f, 0.0f, false }, // Derecha Diagonal
+            {  60.0f, 0.0f, false }  // Derecha Extrema
+        };
     }
     NPCState& state = npcStates[npc];
+    float dt = 1.0f / 60.0f;
 
     float npcX, npcY;
     npc->GetPosition(npcX, npcY);
-    float npcAngle = npc->GetRotation();
+    float npcAngle = npc->GetRotation(); // 0..360
+    float npcAngleRad = (npcAngle - 90.0f) * (PI / 180.0f); // Box2D offset
 
-    // --- 1. TARGET MANAGEMENT ---
+    // --- 1. GESTIÓN DE CHECKPOINTS ---
     float targetX, targetY;
     if (!App->checkpointManager->GetCheckpointPosition(state.targetIndex, targetX, targetY)) {
         targetX = 2714.0f; targetY = 1472.0f; 
@@ -101,135 +121,156 @@ void NPCManager::UpdateAI(Car* npc)
     float dy = targetY - npcY;
     float distToTarget = sqrtf(dx*dx + dy*dy);
 
-    // FIX 1: Aumentado radio de aceptación a 500.0f para que no se obsesionen con el centro exacto
-    // Si la "U" es muy cerrada, esto les permite pasar al siguiente punto antes de chocar.
-    if (distToTarget < 500.0f) {
+    // Radio de aceptación amplio para fluidez
+    if (distToTarget < 400.0f) {
         state.targetIndex++;
         if (state.targetIndex > App->checkpointManager->GetTotalCheckpoints()) {
-            state.targetIndex = 0; // Finish line
+            state.targetIndex = 0; 
         }
-        state.stuckTimer = 0; // Reset stuck timer on progress
+        state.stuckTimer = 0; 
     }
 
-    // --- 2. RAYCASTS (WHISKERS) ---
-    // Bigotes más anchos (45 grados) para ver mejor las curvas cerradas
-    float rayLength = 320.0f; 
-    float angleRad = (npcAngle - 90.0f) * (PI / 180.0f);
-    
-    vec2f forward = { cosf(angleRad), sinf(angleRad) };
-    vec2f leftRay = { cosf(angleRad - 45.0f * (PI/180.0f)), sinf(angleRad - 45.0f * (PI/180.0f)) };
-    vec2f rightRay = { cosf(angleRad + 45.0f * (PI/180.0f)), sinf(angleRad + 45.0f * (PI/180.0f)) };
-
+    // --- 2. RADAR (Gap Finding) ---
+    float maxViewDistance = 450.0f;
     PhysBody* hitBody;
     float hitX, hitY, nX, nY;
-    
-    bool hitLeft = false;
-    bool hitRight = false;
-    bool hitCenter = false;
 
-    state.debugRayLeftFactor = 0.0f;
-    state.debugRayRightFactor = 0.0f;
-    state.debugRayCenterFactor = 0.0f;
-
-    if (App->physics->Raycast(npcX, npcY, npcX + leftRay.x * rayLength, npcY + leftRay.y * rayLength, hitBody, hitX, hitY, nX, nY)) {
-        if (IsRealObstacle(hitBody)) { hitLeft = true; state.debugRayLeftFactor = 1.0f; }
-    }
-    if (App->physics->Raycast(npcX, npcY, npcX + rightRay.x * rayLength, npcY + rightRay.y * rayLength, hitBody, hitX, hitY, nX, nY)) {
-        if (IsRealObstacle(hitBody)) { hitRight = true; state.debugRayRightFactor = 1.0f; }
-    }
-    if (App->physics->Raycast(npcX, npcY, npcX + forward.x * (rayLength + 60), npcY + forward.y * (rayLength + 60), hitBody, hitX, hitY, nX, nY)) {
-        if (IsRealObstacle(hitBody)) { hitCenter = true; state.debugRayCenterFactor = 1.0f; }
-    }
-
-    // --- 3. STUCK DETECTION ---
-    float speed = npc->GetCurrentSpeed();
-    if (speed < 15.0f) {
-        state.stuckTimer += 1.0f / 60.0f;
-    } else {
-        state.stuckTimer = 0.0f;
-        state.stuck = false;
-    }
-
-    if (state.stuckTimer > 1.5f) { // Detect stuck faster (1.5s)
-        if (!state.stuck) {
-             state.stuck = true;
-             // Pick a random direction to reverse into
-             state.reverseSteerDir = (GetRandomValue(0, 1) == 0) ? 1.0f : -1.0f;
+    // Actualizar todos los sensores
+    for (auto& sensor : state.sensors) {
+        float rayAngleRad = npcAngleRad + (sensor.angleOffset * (PI / 180.0f));
+        vec2f dir = { cosf(rayAngleRad), sinf(rayAngleRad) };
+        
+        // Raycast
+        bool hit = App->physics->Raycast(npcX, npcY, npcX + dir.x * maxViewDistance, npcY + dir.y * maxViewDistance, hitBody, hitX, hitY, nX, nY);
+        
+        if (hit && IsRealObstacle(hitBody)) {
+            // Calcular distancia real al impacto
+            float hdx = hitX - npcX;
+            float hdy = hitY - npcY;
+            sensor.distance = sqrtf(hdx*hdx + hdy*hdy);
+            sensor.hit = true;
+        } else {
+            sensor.distance = maxViewDistance; // Camino libre
+            sensor.hit = false;
         }
     }
 
-    // --- 4. DECISION MAKING ---
+    // --- 3. EVALUACIÓN DE DIRECCIONES (El Cerebro) ---
+    
+    // Calcular ángulo hacia el objetivo en coordenadas locales del coche
+    float absTargetAngleRad = atan2f(targetY - npcY, targetX - npcX);
+    float absTargetAngleDeg = absTargetAngleRad * (180.0f / PI) + 90.0f; // Ajuste mundo
+    
+    // Diferencia relativa (-180 a 180) entre morro y objetivo
+    float relativeTargetAngle = absTargetAngleDeg - npcAngle;
+    while (relativeTargetAngle <= -180) relativeTargetAngle += 360;
+    while (relativeTargetAngle > 180) relativeTargetAngle -= 360;
+
+    // Buscar el mejor rayo
+    float bestScore = -99999.0f;
+    int bestIndex = 2; // Default centro
+
+    for (int i = 0; i < (int)state.sensors.size(); i++) {
+        float score = 0.0f;
+        RaySensor& s = state.sensors[i];
+
+        // A. Puntuación base por espacio libre (Esencial para no chocar)
+        // Normalizamos distancia (0.0 a 1.0)
+        float spaceScore = s.distance / maxViewDistance;
+        
+        // Si la distancia es muy crítica (< 50px), penalización masiva (Muro inminente)
+        if (s.distance < 60.0f) spaceScore = -10.0f; 
+
+        score += spaceScore * 2.0f; // Peso alto a no chocar
+
+        // B. Puntuación por alineación con el objetivo (Pathfinding)
+        // ¿Cuánto se alinea este rayo con el objetivo?
+        float rayRelAngle = s.angleOffset; // -60, -30, 0...
+        float angleDiff = fabs(relativeTargetAngle - rayRelAngle);
+        
+        // Cuanto menor la diferencia, mejor (Bonus de hasta 1.0 punto)
+        // Solo aplicamos este bonus si el camino es transitable (> 100px)
+        if (s.distance > 100.0f) {
+            float alignBonus = (180.0f - angleDiff) / 180.0f; 
+            score += alignBonus * 1.5f; // Peso medio al objetivo
+        }
+
+        if (score > bestScore) {
+            bestScore = score;
+            bestIndex = i;
+        }
+    }
+
+    state.bestRayIndex = bestIndex; // Guardamos para debug
+
+    // --- 4. DETECCIÓN DE ATASCO (STUCK) ---
+    float speed = npc->GetCurrentSpeed();
+    // Si vamos lento pero NO estamos frenando voluntariamente (por muro frontal lejano)
+    if (speed < 10.0f) {
+        state.stuckTimer += dt;
+    } else {
+        if (!state.stuck) state.stuckTimer = 0.0f;
+    }
+
+    if (state.stuckTimer > 2.0f && !state.stuck) {
+        state.stuck = true;
+        // Invertimos dirección de escape
+        state.reverseSteerDir = (GetRandomValue(0, 1) == 0) ? 1.0f : -1.0f;
+    }
+
+    // --- 5. INPUTS FINALES ---
     float finalSteer = 0.0f;
     float finalAccel = 0.0f;
     float finalBrake = 0.0f;
-    
-    // Calculate Angle to Target for decision making
-    float desiredAngleRad = atan2f(targetY - npcY, targetX - npcX);
-    float desiredAngleDeg = desiredAngleRad * (180.0f / PI);
-    desiredAngleDeg += 90.0f;
-    float angleDiff = desiredAngleDeg - npcAngle;
-    while (angleDiff <= -180) angleDiff += 360;
-    while (angleDiff > 180) angleDiff -= 360;
 
     if (state.stuck) {
-        state.stateName = "STUCK - REVERSING";
-        finalAccel = -1.0f; // Reverse full power
+        state.stateName = "STUCK - REVERSE";
+        finalAccel = -1.0f; 
         finalSteer = state.reverseSteerDir;
-        
-        // If we backed up enough, try going forward again
-        if (state.stuckTimer > 3.0f) state.stuck = false; 
-    }
-    else if (hitCenter) {
-        // WALL AHEAD
-        state.stateName = "WALL AHEAD";
-        
-        // FIX 2: Evasión inteligente.
-        // Si chocamos de frente, decidir giro basado en huecos O en el objetivo.
-        if (hitLeft) {
-            finalSteer = 1.0f; // Left blocked -> Go Right
-        } else if (hitRight) {
-            finalSteer = -1.0f; // Right blocked -> Go Left
-        } else {
-            // Both sides clear? Turn towards target!
-            finalSteer = (angleDiff > 0) ? 1.0f : -1.0f;
+        if (state.stuckTimer > 3.5f) { // 1.5s de maniobra
+            state.stuck = false;
+            state.stuckTimer = 0.0f;
         }
-
-        // Only brake if really fast, otherwise power through the turn
-        float vx, vy;
-        npc->GetPhysBody()->GetLinearVelocity(vx, vy);
-        float approachSpeed = vx * forward.x + vy * forward.y;
-        
-        if (approachSpeed > 150.0f) {
-             finalBrake = 0.5f; // Soft brake
-             finalAccel = 0.0f;
-        } else {
-             finalAccel = 0.5f; // Keep moving to turn
-        }
-    }
-    else if (hitLeft) {
-        state.stateName = "AVOID LEFT";
-        finalSteer = 0.6f; // Turn Right
-        finalAccel = 0.8f;
-    }
-    else if (hitRight) {
-        state.stateName = "AVOID RIGHT";
-        finalSteer = -0.6f; // Turn Left
-        finalAccel = 0.8f;
-    }
+    } 
     else {
-        state.stateName = "RACING";
+        // MODO CONDUCCIÓN POR "HUECOS"
         
-        // Steer towards target
-        if (angleDiff > 5.0f) finalSteer = 1.0f;
-        else if (angleDiff < -5.0f) finalSteer = -1.0f;
-        else finalSteer = angleDiff / 5.0f;
+        // El índice 2 es centro (0 grados). 
+        // 0 (-60 deg) -> Steer -1.0 (Left)
+        // 4 (+60 deg) -> Steer +1.0 (Right)
+        // Mapeamos el índice elegido (-2 a +2) a dirección (-1.0 a 1.0)
+        float steerDir = (float)(bestIndex - 2) / 2.0f; 
+        
+        // Suavizado: Si el mejor rayo es el central, intentamos afinar más hacia el objetivo
+        if (bestIndex == 2) {
+            if (relativeTargetAngle > 5.0f) steerDir = 0.2f;
+            else if (relativeTargetAngle < -5.0f) steerDir = -0.2f;
+        }
 
-        // Speed logic
-        if (fabs(angleDiff) < 20.0f) finalAccel = 1.0f; 
-        else if (fabs(angleDiff) > 50.0f) finalAccel = 0.4f; // Slow down for sharp turns
-        else finalAccel = 0.8f; 
+        finalSteer = steerDir;
+        state.stateName = "SEEKING GAP";
+
+        // Gestión de velocidad inteligente
+        float centerDist = state.sensors[2].distance;
+        
+        // Si el rayo central es corto, frenar para poder girar
+        if (centerDist < 150.0f) {
+            finalAccel = 0.2f; // Poco gas
+            // Si vamos muy rápido, freno
+            if (speed > 400.0f) finalBrake = 0.5f; 
+            state.stateName = "TIGHT CORNER";
+        } 
+        else if (fabs(finalSteer) > 0.6f) {
+            // Giro cerrado pero con espacio (Drifting)
+            finalAccel = 0.6f;
+        }
+        else {
+            // Recta o curva suave
+            finalAccel = 1.0f;
+        }
     }
 
+    // Aplicar
     npc->Steer(finalSteer);
     npc->Accelerate(finalAccel);
     if (finalAccel < 0.0f) npc->Reverse(fabs(finalAccel));
@@ -244,31 +285,40 @@ update_status NPCManager::PostUpdate()
 		{
 			npc->Draw();
 
-            // --- VISUAL DEBUGGING ---
+            // --- DEBUG VISUAL ---
             if (npcStates.find(npc) != npcStates.end()) {
                 NPCState& state = npcStates[npc];
                 float x, y;
                 npc->GetPosition(x, y);
                 
-                // Draw State Text
-                DrawText(state.stateName.c_str(), (int)x - 20, (int)y - 50, 20, WHITE);
-                
-                // Debug Rays (Visual only)
+                // Texto Estado
+                // DrawText(state.stateName.c_str(), (int)x, (int)y - 40, 10, WHITE);
+
+                // Dibujar el abanico del radar
                 float angle = npc->GetRotation();
                 float angleRad = (angle - 90.0f) * (PI / 180.0f);
-                float rayLen = 320.0f;
                 Vector2 center = { x, y };
 
-                auto DrawDebugLine = [&](float angOffset, float hitFactor) {
-                     float a = angleRad + angOffset * (PI/180.0f);
-                     Vector2 end = { x + cosf(a)*rayLen, y + sinf(a)*rayLen };
-                     Color col = (hitFactor > 0.0f) ? RED : GREEN;
-                     DrawLineV(center, end, col);
-                };
-                
-                DrawDebugLine(-45.0f, state.debugRayLeftFactor);
-                DrawDebugLine(0.0f, state.debugRayCenterFactor);
-                DrawDebugLine(45.0f, state.debugRayRightFactor);
+                for (int i = 0; i < (int)state.sensors.size(); i++) {
+                    RaySensor& s = state.sensors[i];
+                    float rayA = angleRad + s.angleOffset * (PI/180.0f);
+                    
+                    // Longitud visual (proporcional a lo que ve)
+                    float visLen = s.distance; 
+                    Vector2 end = { x + cosf(rayA)*visLen, y + sinf(rayA)*visLen };
+                    
+                    // Color: Verde = Libre, Rojo = Bloqueado, Blanco = ELEGIDO
+                    Color col = (s.hit) ? RED : GREEN;
+                    if (i == state.bestRayIndex) col = WHITE; // El rayo ganador
+                    
+                    DrawLineV(center, end, col);
+                    
+                    // Si es el ganador, dibujarlo más gordo (simulado pintando al lado)
+                    if (i == state.bestRayIndex) {
+                        Vector2 offset = {1, 1};
+                        DrawLineV({center.x+1, center.y}, {end.x+1, end.y}, col);
+                    }
+                }
             }
 		}
 	}
@@ -276,6 +326,8 @@ update_status NPCManager::PostUpdate()
 	return UPDATE_CONTINUE;
 }
 
+// ... (Resto del archivo: CleanUp, CreateNPC, GetNPC igual que antes) ...
+// Asegúrate de mantener la función CreateNPC completa abajo
 bool NPCManager::CleanUp()
 {
 	LOG("Cleaning up NPC Manager");
