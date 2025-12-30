@@ -1,5 +1,6 @@
 #include "entities/Car.h"
 #include "core/Application.h"
+#include "core/Map.h"
 #include "modules/ModulePhysics.h"
 #include "modules/ModuleRender.h"
 #include "modules/ModuleResources.h"
@@ -30,6 +31,9 @@ Car::Car(Application* app)
 	, texture({ 0 })
 	, tint(WHITE)
 	, renderScale(0.075f)  // Scale 1890x1417 texture to 70x52 pixels (fits width, maintains aspect ratio)
+	, currentTerrain(NORMAL)
+	, terrainFrictionModifier(1.0f)
+	, terrainAccelerationModifier(1.0f)
 {
 }
 
@@ -96,6 +100,9 @@ update_status Car::Update()
 	if (!active || !physBody)
 		return UPDATE_CONTINUE;
 
+	// Update terrain detection
+	UpdateTerrainEffects();
+
 	// Apply natural friction to simulate drag
 	ApplyFriction();
 
@@ -151,9 +158,10 @@ void Car::Accelerate(float amount)
 	// Get forward direction based on current rotation
 	vec2f forward = GetForwardVector();
 
-	// Apply force in forward direction
-	float forceX = forward.x * accelerationForce * amount;
-	float forceY = forward.y * accelerationForce * amount;
+	// Apply force in forward direction with terrain modifier
+	float effectiveAcceleration = accelerationForce * terrainAccelerationModifier;
+	float forceX = forward.x * effectiveAcceleration * amount;
+	float forceY = forward.y * effectiveAcceleration * amount;
 
 	physBody->ApplyForce(forceX, forceY);
 }
@@ -169,9 +177,10 @@ void Car::Reverse(float amount)
 	// Get forward direction and reverse it
 	vec2f forward = GetForwardVector();
 
-	// Apply force in backward direction (negative forward)
-	float forceX = -forward.x * reverseForce * amount;
-	float forceY = -forward.y * reverseForce * amount;
+	// Apply force in backward direction (negative forward) with terrain modifier
+	float effectiveReverse = reverseForce * terrainAccelerationModifier;
+	float forceX = -forward.x * effectiveReverse * amount;
+	float forceY = -forward.y * effectiveReverse * amount;
 
 	physBody->ApplyForce(forceX, forceY);
 }
@@ -286,8 +295,9 @@ void Car::ApplyFriction()
 	float vx, vy;
 	physBody->GetLinearVelocity(vx, vy);
 
-	// Apply friction coefficient
-	physBody->SetLinearVelocity(vx * FRICTION_COEFFICIENT, vy * FRICTION_COEFFICIENT);
+	// Apply friction coefficient with terrain modifier
+	float effectiveFriction = FRICTION_COEFFICIENT * terrainFrictionModifier;
+	physBody->SetLinearVelocity(vx * effectiveFriction, vy * effectiveFriction);
 }
 
 void Car::ClampSpeed()
@@ -364,4 +374,103 @@ void Car::ApplyDownforce()
 	// This can be used to enhance friction or for advanced physics
 	// physBody->ApplyForce(downX * downforce, downY * downforce);
 	// (Currently commented out as it's not needed for basic top-down movement)
+}
+
+Car::TerrainType Car::GetCurrentTerrain() const
+{
+	if (!app || !app->map)
+		return NORMAL;
+
+	float carX, carY;
+	GetPosition(carX, carY);
+
+	// Check collision with terrain objects
+	for (const auto& object : app->map->mapData.objects)
+	{
+		// Only check terrain collision objects
+		if (object->type != "Mud" && object->type != "Water")
+			continue;
+
+		if (object->hasPolygon && !object->polygonPoints.empty())
+		{
+			// Check if car position is inside polygon
+			if (IsPointInPolygon(carX, carY, object->polygonPoints, object->x, object->y))
+			{
+				if (object->type == "Mud")
+					return MUD;
+				else if (object->type == "Water")
+					return WATER;
+			}
+		}
+		else if (object->width > 0 && object->height > 0)
+		{
+			// Rectangle collision check
+			float objLeft = object->x;
+			float objRight = object->x + object->width;
+			float objTop = object->y;
+			float objBottom = object->y + object->height;
+
+			if (carX >= objLeft && carX <= objRight && carY >= objTop && carY <= objBottom)
+			{
+				if (object->type == "Mud")
+					return MUD;
+				else if (object->type == "Water")
+					return WATER;
+			}
+		}
+	}
+
+	return NORMAL;
+}
+
+void Car::UpdateTerrainEffects()
+{
+	TerrainType newTerrain = GetCurrentTerrain();
+	
+	if (newTerrain != currentTerrain)
+	{
+		currentTerrain = newTerrain;
+		
+		// Set terrain modifiers based on terrain type
+		switch (currentTerrain)
+		{
+		case NORMAL:
+			terrainFrictionModifier = 1.0f;
+			terrainAccelerationModifier = 1.0f;
+			break;
+		case MUD:
+			terrainFrictionModifier = 0.6f;  // Less slippery than before
+			terrainAccelerationModifier = 0.7f;  // Better acceleration
+			break;
+		case WATER:
+			terrainFrictionModifier = 0.1f;  // Very slippery
+			terrainAccelerationModifier = 0.3f;  // Much harder to accelerate
+			break;
+		}
+		
+		LOG("Car entered %s terrain", 
+			currentTerrain == NORMAL ? "NORMAL" : 
+			currentTerrain == MUD ? "MUD" : "WATER");
+	}
+}
+
+bool Car::IsPointInPolygon(float px, float py, const std::vector<vec2i>& points, float offsetX, float offsetY) const
+{
+	int n = points.size();
+	bool inside = false;
+
+	for (int i = 0, j = n - 1; i < n; j = i++)
+	{
+		float xi = offsetX + points[i].x;
+		float yi = offsetY + points[i].y;
+		float xj = offsetX + points[j].x;
+		float yj = offsetY + points[j].y;
+
+		if (((yi > py) != (yj > py)) && (px < (xj - xi) * (py - yi) / (yj - yi) + xi))
+		{
+			inside = !inside;
+		}
+	}
+
+	return inside;
 }

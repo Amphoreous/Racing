@@ -98,6 +98,10 @@ struct MapObject
     std::string type;
     int x, y, width, height;
     Properties properties;
+    
+    // Polygon data
+    std::vector<vec2i> polygonPoints;
+    bool hasPolygon = false;
 };
 
 struct MapData
@@ -139,4 +143,8 @@ public:
 private:
     bool mapLoaded;
     void CreateCollisionBodies();
+    bool TriangulatePolygon(const std::vector<vec2i>& polygon, std::vector<std::vector<float>>& triangles);
+    bool IsEar(const std::vector<vec2i>& vertices, size_t prev, size_t current, size_t next);
+    float CrossProduct(vec2i v1, vec2i v2);
+    bool PointInTriangle(vec2i p, vec2i a, vec2i b, vec2i c);
 };

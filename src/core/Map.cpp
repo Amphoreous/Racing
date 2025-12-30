@@ -104,6 +104,112 @@ bool Map::CleanUp()
 }
 
 // Create physics bodies for collision objects
+bool Map::TriangulatePolygon(const std::vector<vec2i>& polygon, std::vector<std::vector<float>>& triangles)
+{
+	if (polygon.size() < 3)
+		return false;
+
+	// Use ear clipping algorithm for proper triangulation of concave polygons
+	std::vector<vec2i> vertices = polygon;
+	triangles.clear();
+
+	while (vertices.size() > 3)
+	{
+		bool foundEar = false;
+		
+		for (size_t i = 0; i < vertices.size(); ++i)
+		{
+			size_t prev = (i + vertices.size() - 1) % vertices.size();
+			size_t next = (i + 1) % vertices.size();
+			
+			// Check if this vertex forms an ear
+			if (IsEar(vertices, prev, i, next))
+			{
+				// Create triangle from prev, current, next
+				std::vector<float> triangle;
+				triangle.push_back(vertices[prev].x);
+				triangle.push_back(vertices[prev].y);
+				triangle.push_back(vertices[i].x);
+				triangle.push_back(vertices[i].y);
+				triangle.push_back(vertices[next].x);
+				triangle.push_back(vertices[next].y);
+				
+				triangles.push_back(triangle);
+				
+				// Remove the ear vertex
+				vertices.erase(vertices.begin() + i);
+				foundEar = true;
+				break;
+			}
+		}
+		
+		if (!foundEar)
+		{
+			// If no ear found, the polygon might be degenerate
+			// Fall back to a simple approach
+			break;
+		}
+	}
+	
+	// Add the final triangle
+	if (vertices.size() == 3)
+	{
+		std::vector<float> triangle;
+		triangle.push_back(vertices[0].x);
+		triangle.push_back(vertices[0].y);
+		triangle.push_back(vertices[1].x);
+		triangle.push_back(vertices[1].y);
+		triangle.push_back(vertices[2].x);
+		triangle.push_back(vertices[2].y);
+		
+		triangles.push_back(triangle);
+	}
+	
+	return !triangles.empty();
+}
+
+bool Map::IsEar(const std::vector<vec2i>& vertices, size_t prev, size_t current, size_t next)
+{
+	// Check if the triangle (prev, current, next) contains any other vertices
+	vec2i a = vertices[prev];
+	vec2i b = vertices[current];
+	vec2i c = vertices[next];
+	
+	// Check if triangle is counter-clockwise (convex)
+	if (CrossProduct(b - a, c - b) <= 0)
+		return false;
+	
+	// Check if any other vertex is inside this triangle
+	for (size_t i = 0; i < vertices.size(); ++i)
+	{
+		if (i == prev || i == current || i == next)
+			continue;
+		
+		if (PointInTriangle(vertices[i], a, b, c))
+			return false;
+	}
+	
+	return true;
+}
+
+float Map::CrossProduct(vec2i v1, vec2i v2)
+{
+	return v1.x * v2.y - v1.y * v2.x;
+}
+
+bool Map::PointInTriangle(vec2i p, vec2i a, vec2i b, vec2i c)
+{
+	// Use barycentric coordinate system to check if point is inside triangle
+	float area = CrossProduct(b - a, c - a);
+	float area1 = CrossProduct(p - a, b - a);
+	float area2 = CrossProduct(p - b, c - b);
+	float area3 = CrossProduct(p - c, a - c);
+	
+	// Check if all areas have the same sign as the total area
+	return (area1 >= 0 && area2 >= 0 && area3 >= 0 && area > 0) ||
+		   (area1 <= 0 && area2 <= 0 && area3 <= 0 && area < 0);
+}
+
 void Map::CreateCollisionBodies()
 {
     if (!App->physics)
@@ -114,9 +220,51 @@ void Map::CreateCollisionBodies()
 
     for (const auto& object : mapData.objects)
     {
-        if (object->type == "Normal" && object->width > 0 && object->height > 0)
+        // Skip non-collision objects (checkpoints, start positions, etc.)
+        if (object->type == "Start" || object->name.find("C") == 0 || object->name == "FL")
         {
-            // Create static rectangle body for collision
+            continue;
+        }
+
+        if (object->hasPolygon && !object->polygonPoints.empty())
+        {
+            // Triangulate complex polygon into triangles for Box2D
+            std::vector<std::vector<float>> triangles;
+            if (TriangulatePolygon(object->polygonPoints, triangles))
+            {
+                // Create collision body for each triangle
+                for (const auto& triangle : triangles)
+                {
+                    // Convert triangle points to world coordinates
+                    std::vector<float> worldVertices;
+                    for (size_t i = 0; i < triangle.size(); i += 2)
+                    {
+                        float worldX = object->x + triangle[i];
+                        float worldY = object->y + triangle[i + 1];
+                        worldVertices.push_back(worldX);
+                        worldVertices.push_back(worldY);
+                    }
+
+                    PhysBody* body = App->physics->CreatePolygon(0, 0, worldVertices.data(), 3, PhysBody::BodyType::STATIC);
+                    if (body)
+                    {
+                        LOG("Created triangle collision body for object '%s' (%s)",
+                            object->name.c_str(), object->type.c_str());
+                    }
+                    else
+                    {
+                        LOG("Failed to create triangle collision body for object '%s'", object->name.c_str());
+                    }
+                }
+            }
+            else
+            {
+                LOG("Failed to triangulate polygon for object '%s'", object->name.c_str());
+            }
+        }
+        else if (object->width > 0 && object->height > 0)
+        {
+            // Create rectangle collision body for objects without polygons
             // Position is center of rectangle
             float centerX = object->x + object->width * 0.5f;
             float centerY = object->y + object->height * 0.5f;
@@ -124,12 +272,12 @@ void Map::CreateCollisionBodies()
             PhysBody* body = App->physics->CreateRectangle(centerX, centerY, object->width, object->height, PhysBody::BodyType::STATIC);
             if (body)
             {
-                LOG("Created collision body for object '%s' at (%.1f, %.1f) size (%.1f, %.1f)",
+                LOG("Created rectangle collision body for object '%s' at (%.1f, %.1f) size (%.1f, %.1f)",
                     object->name.c_str(), centerX, centerY, object->width, object->height);
             }
             else
             {
-                LOG("Failed to create collision body for object '%s'", object->name.c_str());
+                LOG("Failed to create rectangle collision body for object '%s'", object->name.c_str());
             }
         }
     }
@@ -395,6 +543,37 @@ bool Map::Load(const std::string& path, const std::string& fileName)
 			inProperties = false;
 		}
 		// FIN DE LAS LÍNEAS AÑADIDAS
+
+		// Parse polygon data
+		if (inObject && line.find("<polygon ") != std::string::npos)
+		{
+			if (currentObject)
+			{
+				std::string pointsStr = GetAttributeValue(line, "points");
+				if (!pointsStr.empty())
+				{
+					currentObject->hasPolygon = true;
+					std::stringstream ss(pointsStr);
+					std::string pointStr;
+					
+					while (std::getline(ss, pointStr, ' '))
+					{
+						pointStr = Trim(pointStr);
+						if (!pointStr.empty())
+						{
+							size_t commaPos = pointStr.find(',');
+							if (commaPos != std::string::npos)
+							{
+								int px = std::stoi(pointStr.substr(0, commaPos));
+								int py = std::stoi(pointStr.substr(commaPos + 1));
+								currentObject->polygonPoints.push_back({px, py});
+							}
+						}
+					}
+					LOG("  Polygon with %d points", (int)currentObject->polygonPoints.size());
+				}
+			}
+		}
 
 		if (line.find("</object>") != std::string::npos)
 		{

@@ -3,10 +3,19 @@
 #include "entities/Entity.h"
 #include "raylib.h"
 #include "core/p2Point.h"
+#include <vector>
 
 class Car : public Entity
 {
 public:
+	// Terrain types that affect car physics
+	enum TerrainType
+	{
+		NORMAL = 0,
+		MUD,
+		WATER
+	};
+
 	Car(Application* app);
 	virtual ~Car();
 
@@ -40,6 +49,10 @@ public:
 	void SetTexture(Texture2D tex);
 	void SetColor(Color color);
 
+	// Terrain detection
+	TerrainType GetCurrentTerrain() const;
+	void UpdateTerrainEffects();
+
 private:
 	// Physics tuning parameters
 	float accelerationForce;      // Forward force magnitude
@@ -55,10 +68,18 @@ private:
 	Color tint;
 	float renderScale;
 
+	// Terrain state
+	TerrainType currentTerrain;
+	float terrainFrictionModifier;
+	float terrainAccelerationModifier;
+
 	// Helper methods
 	void ApplyFriction();
 	void ClampSpeed();
 	void ApplyDownforce();
 	vec2f GetForwardVector() const;
 	vec2f GetRightVector() const;
+	
+	// Terrain detection
+	bool IsPointInPolygon(float px, float py, const std::vector<vec2i>& points, float offsetX, float offsetY) const;
 };
