@@ -1,6 +1,6 @@
-# Amphoreous — Racing
+# Luma Grand Prix
 
-A lightweight 2D arcade racing project built with Raylib and Box2D. Amphoreous/Racing focuses on simple, responsive driving mechanics, deterministic physics, modular architecture, and easy-to-author tracks using Tiled.
+A lightweight 2D arcade racing project built with Raylib and Box2D. Luma Grand Prix focuses on simple, responsive driving mechanics, deterministic physics, modular architecture, and easy-to-author tracks using Tiled.
 
 Quick highlights
 - Physics-driven car handling (Box2D via project physics wrappers)
@@ -77,9 +77,8 @@ Gameplay
 - Accelerate: W / Up arrow
 - Brake / Reverse: S / Down arrow
 - Steer left/right: A / Left arrow, D / Right arrow
-- Pause: P
-- Restart / Confirm: Space / Enter
-- Escape: Back / Open menu
+- Change camera view: C
+- Close: Back / Open menu
 
 Debug
 - Toggle debug draw: F1

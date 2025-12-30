@@ -1,4 +1,4 @@
-name: Build Pinball Project
+name: Build Racing Project
 
 on:
   workflow_dispatch:
@@ -35,31 +35,29 @@ jobs:
         ./build-VisualStudio2022.bat
 
         # Build Release configuration
-        msbuild Pinball.sln /p:Configuration=Release /p:Platform=x64
+        msbuild Racing.sln /p:Configuration=Release /p:Platform=x64
       shell: pwsh
 
-    - name: Prepare Pinball Release Structure
+    - name: Prepare Racing Release Structure
       run: |
         # Define team names according to grading requirements (alphabetical by last name)
         $teamMembers = @(
           "GinerSofia",
           "HamdaouiZakaria", 
           "MartinezJoel",
-          "MedinaMontserrat",
-          "PladellorensMarc"
         )
         $teamString = $teamMembers -join "_"
         $version = "${{ github.event.inputs.version }}"
         $releaseName = "${teamString}_v${version}"
-        $gameFolder = "$releaseName/Pinball"
+        $gameFolder = "$releaseName/Racing"
         
         # Create directories following required structure
         New-Item -ItemType Directory -Path $gameFolder -Force
         
-        # Copy executable (must be named Pinball.exe)
+        # Copy executable (must be named Racing.exe)
         $exeFiles = Get-ChildItem "bin/Release/*.exe"
         if ($exeFiles.Count -gt 0) {
-            Copy-Item $exeFiles[0].FullName -Destination "$gameFolder/Pinball.exe"
+            Copy-Item $exeFiles[0].FullName -Destination "$gameFolder/Racing.exe"
             Write-Host "✅ Copied executable: $($exeFiles[0].Name)"
         } else {
             Write-Error "❌ No executable found in bin/Release/"
@@ -115,16 +113,16 @@ jobs:
 
     - name: Verify Grading Requirements
       run: |
-        $teamString = "GinerSofia_HamdaouiZakaria_MartinezJoel_MedinaMontserrat_PladellorensMarc"
+        $teamString = "GinerSofia_HamdaouiZakaria_MartinezJoel"
         $releaseName = "${teamString}_v${{ github.event.inputs.version }}"
-        $gameFolder = "$releaseName/Pinball"
+        $gameFolder = "$releaseName/Racing"
         
         Write-Host "🔍 Verifying grading requirements..."
         
         # Check required files exist
         $requiredFiles = @(
             "$releaseName/README.md",
-            "$gameFolder/Pinball.exe"
+            "$gameFolder/Racing.exe"
         )
         
         $missing = @()
@@ -145,14 +143,13 @@ jobs:
                 "Zakaria Hamdaoui",
                 "Sofia Giner Vargas", 
                 "Joel Martínez Arjona",
-                "Marc Pladellorens Pérez",
-                "Montserrat Medina Chávez",
                 "Left Arrow",
                 "Right Arrow", 
+                "Up Arrow",
                 "Down Arrow",
                 "F1",
-                "Pokemon Pinball",
-                "github.com/Amphoreous/Pinball"
+                "Luma Grand Prix",
+                "github.com/Amphoreous/Racing"
             )
             
             foreach ($content in $requiredContent) {
@@ -176,8 +173,8 @@ jobs:
         }
         
         # Check executable works (basic validation)
-        if (Test-Path "$gameFolder/Pinball.exe") {
-            $exeInfo = Get-Item "$gameFolder/Pinball.exe"
+        if (Test-Path "$gameFolder/Racing.exe") {
+            $exeInfo = Get-Item "$gameFolder/Racing.exe"
             Write-Host "✅ Executable size: $([math]::Round($exeInfo.Length/1MB, 2)) MB"
             Write-Host "✅ Executable created: $($exeInfo.CreationTime)"
         }
@@ -199,14 +196,14 @@ jobs:
         Write-Host "✅ No excessive source code included"
       shell: pwsh
 
-    - name: Create Pinball Game Release
+    - name: Create Racing Game Release
       uses: softprops/action-gh-release@v1
       with:
-        files: GinerSofia_HamdaouiZakaria_MartinezJoel_MedinaMontserrat_PladellorensMarc_v${{ github.event.inputs.version }}.zip
+        files: GinerSofia_HamdaouiZakaria_MartinezJoel_v${{ github.event.inputs.version }}.zip
         tag_name: v${{ github.event.inputs.version }}
-        name: Pokemon Pinball Clone - Release v${{ github.event.inputs.version }}
+        name: Luma Grand Prix - Release v${{ github.event.inputs.version }}
         body: |
-          # Pokemon Pinball Clone - Release v${{ github.event.inputs.version }}
+          # Luma Grand Prix - Release v${{ github.event.inputs.version }}
           
           **Game Development Course Final Project**
           
@@ -214,73 +211,73 @@ jobs:
           - **Zakaria Hamdaoui** (@TheUnrealZaka) - Project Lead
           - **Sofia Giner Vargas** (@Katy-9) - Art Lead  
           - **Joel Martínez Arjona** (@Jowey7) - Physics Lead
-          - **Marc Pladellorens Pérez** (@MarcPladellorensPerez) - Gameplay Lead
-          - **Montserrat Medina Chávez** (@montse4) - Audio/Polish Lead
           
           ## 🎮 Game Features
-          - **Realistic pinball physics** using Box2D engine
-          - **Responsive flipper controls** (Left/Right arrow keys)
-          - **Kicker mechanism** (Down arrow key)  
-          - **Comprehensive scoring system** (Current/Previous/Highest)
-          - **Ball management** with 3 balls per round
-          - **POKEMON combo system** for bonus points and extra balls
-          - **Complete audio system** with hit sounds and bonuses
-          - **F1 Debug mode** with physics shape visualization
-          - **Mouse joint debugging** for physics testing
+          - **Physics-driven car handling** using Box2D engine
+          - **Responsive steering controls** (Left/Right arrow keys for steering, Up/Down for accelerate/brake)
+          - **AI opponents** with waypoint system
+          - **Tiled map support** for track authoring
+          - **Debug tools** with physics visualization (F1) and mouse joint dragging
+          - **Lap timer and speedometer** UI
+          - **Audio system** with background music and SFX
+          - **Modular architecture** for easy maintenance
           
           ## 🎯 Controls
-          - **Left Arrow**: Control left flipper
-          - **Right Arrow**: Control right flipper
-          - **Down Arrow**: Control kicker (launch ball)
+          - **Up Arrow / W**: Accelerate
+          - **Down Arrow / S**: Brake / Reverse
+          - **Left Arrow / A**: Steer left
+          - **Right Arrow / D**: Steer right
+          - **P**: Pause
+          - **Space / Enter**: Restart / Confirm
+          - **Escape**: Back / Open menu
           - **F1**: Toggle debug mode (physics visualization)
-          - **P**: Pause/Unpause game
-          - **Space**: Start new game
           
           ## 🏆 Grading Requirements Met
           - ✅ **No crashes** during extended gameplay
-          - ✅ **Flipper controls** respond to left/right arrows
-          - ✅ **Kicker control** responds to down arrow
+          - ✅ **Steering controls** respond to left/right arrows
+          - ✅ **Acceleration/brake** respond to up/down arrows
           - ✅ **F1 debug mode** shows all physics shapes
           - ✅ **Mouse joint** allows dragging objects in debug mode
           - ✅ **Real-time performance** at stable 60 FPS
-          - ✅ **Audio effects** for hits, bonuses, and combos
-          - ✅ **Scoring system** tracks current, previous, and highest scores
-          - ✅ **Ball management** with specific count per round (3 balls)
-          - ✅ **Combo system** - POKEMON letter collection for bonuses
-          - ✅ **Clear game states** with proper begin/end screens
+          - ✅ **Audio effects** for engine sounds and collisions
+          - ✅ **Scoring system** tracks lap times and positions
+          - ✅ **AI opponents** follow waypoints
+          - ✅ **Track boundaries** using Tiled maps
+          - ✅ **Clear game states** with proper menus and victory screens
           - ✅ **No memory leaks** verified with testing tools
           
           ## 📦 Release Contents
-          - **Pinball.exe** - Main game executable (Release build, 60 FPS)
-          - **Assets folder** - All sprites, audio, and UI elements
+          - **Racing.exe** - Main game executable (Release build, 60 FPS)
+          - **Assets folder** - All sprites, maps, audio, and UI elements
           - **README.md** - Complete documentation and team information
           - **Required DLLs** - raylib and Box2D dependencies
           
           ## 🔧 Technical Implementation
           - Built with **raylib** for graphics and audio
-          - **Box2D** physics engine for realistic pinball simulation  
+          - **Box2D** physics engine for realistic car simulation  
           - **premake5** build system from raylib-box2d-quickstart template
           - **Visual Studio 2022** Release configuration
           - **Cross-platform** code structure (Windows/Linux/macOS)
           
           ## 🎨 Inspiration
-          Inspired by **Pokemon Pinball - Ruby & Sapphire** for Game Boy Advance
+          No inspiration, all the game code and assets were created from scratch by the team.
           
           ## 📊 Development Stats
-          - **38 GitHub issues** completed across all team members
-          - **32 days** of development (September 28 - October 30, 2025)
+          - **25 open issues** related to architecture, physics, gameplay, AI, UI, audio, and release tasks
+          - **Active development** with modular design
           - **5 specialized team roles** with clear responsibilities
           - **Multiple build configurations** tested and verified
           
           ## 🚀 Installation & Play
           1. Download and extract the ZIP file
-          2. Run `Pinball.exe` from the Pinball folder
-          3. Use arrow keys to play, F1 for debug mode
-          4. Enjoy the physics-based pinball experience!
+          2. Run `Racing.exe` from the Racing folder
+          3. Use arrow keys to drive, F1 for debug mode
+          4. Enjoy the physics-based racing experience!
           
           ---
           
-          **Repository**: https://github.com/Amphoreous/Pinball
+          **Repository**: https://github.com/Amphoreous/Racing
+          **GitHub Project Board**: https://github.com/orgs/Amphoreous/projects/4
           **Original Template**: https://github.com/TheUnrealZaka/raylib-box2d-quickstart
           **Submission Date**: October 30, 2025
           

@@ -10,12 +10,12 @@ BEGIN
     BLOCK "040904E4"    // English US
     BEGIN
       VALUE "CompanyName", "Amphoreous"
-      VALUE "FileDescription", "A pinball game"
+      VALUE "FileDescription", "A racing game"
       VALUE "FileVersion", "0.0.1"
-      VALUE "InternalName", "pinball"
+      VALUE "InternalName", "lumagrandprix"
       VALUE "LegalCopyright", "(c) 2025 Amphoreous - MIT License (Source Code Only)"
-      VALUE "OriginalFilename", "pinball"
-      VALUE "ProductName", "Pinball"
+      VALUE "OriginalFilename", "lumagrandprix"
+      VALUE "ProductName", "Luma Grand Prix"
       VALUE "ProductVersion", "0.0.1"
     END
   END
