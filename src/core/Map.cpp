@@ -258,41 +258,40 @@ void Map::CreateCollisionBodies()
         }
     }
 
-    // Original code for polygon objects continues here...
+    // Process map objects
     for (const auto& object : mapData.objects)
     {
-        // Skip non-collision objects (checkpoints, start positions, etc.)
+        // 1. Skip logic objects
         if (object->type == "Start" || object->name.find("C") == 0 || object->name == "FL")
         {
             continue;
         }
 
+        // 2. Skip zones (The car detects them by code, they should NOT create solid physics)
+        // If we create physics for them, the car will collide against water/mud like a solid wall.
+        if (object->type == "Normal" || object->type == "Water" || object->type == "Mud")
+        {
+            // LOG("Zone object '%s' (%s) skipped for physics creation (handled by logic)", object->name.c_str(), object->type.c_str());
+            continue; 
+        }
+
+        // 3. Create walls (Only Polylines/Chains that are not zones)
         if (object->hasPolygon && !object->polygonPoints.empty())
         {
-            // Convert TMX object points to world coordinates
             std::vector<float> worldVertices;
             for (const auto& point : object->polygonPoints)
             {
-                // TMX objects are relative to the object's position
                 worldVertices.push_back((float)object->x + point.x);
                 worldVertices.push_back((float)object->y + point.y);
             }
 
-            // Create a single CHAIN (Chain) instead of triangles
-            // Pass worldVertices.size() / 2 because the vector has x,y sequential
+            // Create the physical chain (Polylines have isClosed = false -> Will use the two-sided edges fix)
             PhysBody* body = App->physics->CreateChain(0, 0, worldVertices.data(), worldVertices.size() / 2, object->isClosed);
 
             if (body)
             {
-                // Store reference to the map object for terrain type detection
                 body->SetUserData((void*)object);
-
-                LOG("Created CHAIN collision body for object '%s' with %d points",
-                    object->name.c_str(), (int)object->polygonPoints.size());
-            }
-            else
-            {
-                LOG("Failed to create chain body for object '%s'", object->name.c_str());
+                LOG("Created Wall/Collision body for object '%s' (Points: %d)", object->name.c_str(), (int)object->polygonPoints.size());
             }
         }
         else if (object->width > 0 && object->height > 0)

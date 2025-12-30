@@ -388,7 +388,7 @@ Car::TerrainType Car::GetCurrentTerrain() const
 	for (const auto& object : app->map->mapData.objects)
 	{
 		// Only check terrain collision objects
-		if (object->type != "Mud" && object->type != "Water")
+		if (object->type != "Mud" && object->type != "Water" && object->type != "Normal")
 			continue;
 
 		if (object->hasPolygon && !object->polygonPoints.empty())
@@ -400,6 +400,8 @@ Car::TerrainType Car::GetCurrentTerrain() const
 					return MUD;
 				else if (object->type == "Water")
 					return WATER;
+				else if (object->type == "Normal")
+					return NORMAL;
 			}
 		}
 		else if (object->width > 0 && object->height > 0)
@@ -416,6 +418,8 @@ Car::TerrainType Car::GetCurrentTerrain() const
 					return MUD;
 				else if (object->type == "Water")
 					return WATER;
+				else if (object->type == "Normal")
+					return NORMAL;
 			}
 		}
 	}

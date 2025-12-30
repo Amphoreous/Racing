@@ -381,60 +381,70 @@ PhysBody* ModulePhysics::CreatePolygon(float x, float y, const float* vertices, 
 
 PhysBody* ModulePhysics::CreateChain(float x, float y, const float* vertices, int vertexCount, bool loop)
 {
-	if (!world || !vertices || vertexCount < 2)
-	{
-		LOG("ERROR: Invalid chain parameters");
-		return nullptr;
-	}
-	
-	// Create Box2D body definition (chains are always static)
-	b2BodyDef bodyDef;
-	bodyDef.type = b2_staticBody;
-	bodyDef.position.Set(x * PIXELS_TO_METERS, y * PIXELS_TO_METERS);
-	
-	// Create the body in Box2D
-	b2Body* b2body = world->CreateBody(&bodyDef);
-	
-	// Convert vertices to Box2D format
-	b2Vec2* b2vertices = new b2Vec2[vertexCount];
-	for (int i = 0; i < vertexCount; i++)
-	{
-		b2vertices[i].Set(vertices[i * 2] * PIXELS_TO_METERS, vertices[i * 2 + 1] * PIXELS_TO_METERS);
-	}
-	
-	// Create chain shape
-	b2ChainShape shape;
-	if (loop)
-	{
-		shape.CreateLoop(b2vertices, vertexCount);
-	}
-	else
-	{
-		shape.CreateChain(b2vertices, vertexCount, b2Vec2(0, 0), b2Vec2(0, 0));
-	}
-	
-	delete[] b2vertices;
-	
-	// Create fixture
-	b2FixtureDef fixtureDef;
-	fixtureDef.shape = &shape;
-	fixtureDef.friction = 0.5f;
-	fixtureDef.restitution = 0.0f;
-	
-	b2body->CreateFixture(&fixtureDef);
-	
-	// Create PhysBody wrapper
-	PhysBody* physBody = new PhysBody();
-	physBody->SetB2Body(b2body);
-	
-	// Store wrapper pointer in Box2D body
-	b2body->GetUserData().pointer = (uintptr_t)physBody;
-	
-	// Add to our list
-	bodies.push_back(physBody);
-	
-	LOG("Created chain body at (%.1f, %.1f) with %d vertices (loop: %s)", x, y, vertexCount, loop ? "yes" : "no");
-	return physBody;
+    if (!world || !vertices || vertexCount < 2)
+    {
+        LOG("ERROR: Invalid chain parameters");
+        return nullptr;
+    }
+
+    // Create Box2D body definition
+    b2BodyDef bodyDef;
+    bodyDef.type = b2_staticBody;
+    bodyDef.position.Set(x * PIXELS_TO_METERS, y * PIXELS_TO_METERS);
+
+    b2Body* b2body = world->CreateBody(&bodyDef);
+
+    // Convert vertices to Box2D format
+    b2Vec2* b2vertices = new b2Vec2[vertexCount];
+    for (int i = 0; i < vertexCount; i++)
+    {
+        b2vertices[i].Set(vertices[i * 2] * PIXELS_TO_METERS, vertices[i * 2 + 1] * PIXELS_TO_METERS);
+    }
+
+    if (loop)
+    {
+        // For closed polygons (Islands, Closed circuits)
+        b2ChainShape shape;
+        shape.CreateLoop(b2vertices, vertexCount);
+        
+        b2FixtureDef fixtureDef;
+        fixtureDef.shape = &shape;
+        fixtureDef.friction = 0.5f;
+        fixtureDef.restitution = 0.0f;
+        b2body->CreateFixture(&fixtureDef);
+    }
+    else
+    {
+		// For open lines (walls), create multiple individual edges.
+		// The b2EdgeShape are SOLID ON BOTH SIDES (Two-Sided) by default.
+        for (int i = 0; i < vertexCount - 1; ++i)
+        {
+            b2EdgeShape shape;
+			// Define a solid segment between two points
+            shape.SetTwoSided(b2vertices[i], b2vertices[i + 1]); 
+            
+            b2FixtureDef fixtureDef;
+            fixtureDef.shape = &shape;
+            fixtureDef.friction = 0.5f;
+            fixtureDef.restitution = 0.0f;
+            b2body->CreateFixture(&fixtureDef);
+        }
+    }
+
+    delete[] b2vertices;
+
+    // Create PhysBody wrapper
+    PhysBody* physBody = new PhysBody();
+    physBody->SetB2Body(b2body);
+    
+    // Store wrapper pointer in Box2D body
+    b2body->GetUserData().pointer = (uintptr_t)physBody;
+    
+    // Add to our list
+    bodies.push_back(physBody);
+    
+    LOG("Created chain/edge body at (%.1f, %.1f) with %d vertices (loop: %s)", x, y, vertexCount, loop ? "yes" : "no");
+    return physBody;
 }
 
 void ModulePhysics::DestroyBody(PhysBody* body)
