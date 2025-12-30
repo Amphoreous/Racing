@@ -5,6 +5,7 @@
 #include <vector>
 
 class Car;
+class PushAbility;  // ADDED: Forward declaration
 
 class NPCManager : public Module
 {
@@ -22,8 +23,10 @@ public:
 	Car* GetNPC(int index) const;
 
 private:
-	std::vector<Car*> npcCars;  // Three NPC cars
+	std::vector<Car*> npcCars;
+	std::vector<PushAbility*> npcAbilities;
 
 	void CreateNPC(const char* npcName, const char* texturePath);
 	void UpdateAI(Car* npc);
+	void CheckAndUseAbility(Car* npc, PushAbility* ability);
 };

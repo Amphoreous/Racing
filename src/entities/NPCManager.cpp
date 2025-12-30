@@ -6,6 +6,8 @@
 #include "modules/ModuleResources.h"
 #include "modules/ModulePhysics.h"
 #include "core/p2Point.h"
+#include "entities/PushAbility.h"
+#include "entities/Player.h"
 #include "raylib.h"
 #include <cmath>
 #include <map>
@@ -28,15 +30,18 @@ struct RaySensor {
 struct NPCState {
     int targetIndex;
     std::string stateName;
-    
+
     // Para visualización debug
     std::vector<RaySensor> sensors;
-    int bestRayIndex; // El rayo elegido
+    int bestRayIndex;
 
     // Detección de atascos
     bool stuck;
     float stuckTimer;
     float reverseSteerDir;
+
+    // Para detección de uso de habilidad
+    float lastAbilityCheck;  // Temporizador para no chequear cada frame
 };
 
 static std::map<Car*, NPCState> npcStates;
@@ -52,24 +57,52 @@ NPCManager::~NPCManager()
 
 bool NPCManager::Start()
 {
-	LOG("Creating NPC cars");
-	CreateNPC("NPC1", "assets/sprites/npc_1.png");
-	CreateNPC("NPC2", "assets/sprites/npc_2.png");
-	CreateNPC("NPC3", "assets/sprites/npc_3.png");
-	return true;
+    LOG("Creating NPC cars");
+    CreateNPC("NPC1", "assets/sprites/npc_1.png");
+    CreateNPC("NPC2", "assets/sprites/npc_2.png");
+    CreateNPC("NPC3", "assets/sprites/npc_3.png");
+
+    // Initialize abilities for each NPC (one per car)
+    for (size_t i = 0; i < npcCars.size(); i++)
+    {
+        PushAbility* ability = new PushAbility();
+        if (ability->Init(App, false))  // false -> NPC ability (no cooldown-ready sound)
+        {
+            npcAbilities.push_back(ability);
+            LOG("NPC%d ability initialized", (int)i + 1);
+        }
+        else
+        {
+            delete ability;
+            npcAbilities.push_back(nullptr);
+            LOG("WARNING: Failed to init ability for NPC%d", (int)i + 1);
+        }
+    }
+
+    return true;
 }
 
 update_status NPCManager::Update()
 {
-	for (Car* npc : npcCars)
-	{
-		if (npc)
-		{
-			UpdateAI(npc);
-			npc->Update();
-		}
-	}
-	return UPDATE_CONTINUE;
+    for (size_t i = 0; i < npcCars.size(); i++)
+    {
+        Car* npc = npcCars[i];
+        PushAbility* ability = (i < npcAbilities.size()) ? npcAbilities[i] : nullptr;
+
+        if (npc)
+        {
+            UpdateAI(npc);
+            npc->Update();
+
+            // Check and use ability
+            if (ability)
+            {
+                ability->Update();
+                CheckAndUseAbility(npc, ability);
+            }
+        }
+    }
+    return UPDATE_CONTINUE;
 }
 
 // Helper: Detecta solo muros estáticos reales
@@ -92,7 +125,7 @@ void NPCManager::UpdateAI(Car* npc)
 
     // Inicializar estado
     if (npcStates.find(npc) == npcStates.end()) {
-        npcStates[npc] = { 1, "INIT", {}, 2, false, 0.0f, 0.0f };
+        npcStates[npc] = { 1, "INIT", {}, 2, false, 0.0f, 0.0f, 0.0f };
         // Definir los 5 sensores del radar (ángulos en grados)
         // Cubrimos un abanico amplio para "ver" las curvas cerradas
         npcStates[npc].sensors = {
@@ -279,61 +312,138 @@ void NPCManager::UpdateAI(Car* npc)
 
 update_status NPCManager::PostUpdate()
 {
-	for (Car* npc : npcCars)
-	{
-		if (npc)
-		{
-			npc->Draw();
+    for (size_t i = 0; i < npcCars.size(); i++)
+    {
+        Car* npc = npcCars[i];
+        PushAbility* ability = (i < npcAbilities.size()) ? npcAbilities[i] : nullptr;
+
+        if (npc)
+        {
+            npc->Draw();
+
+            // Draw ability effect
+            if (ability)
+            {
+                ability->Draw();
+            }
 
             if (App->physics->IsDebugMode() && npcStates.find(npc) != npcStates.end()) {
                 NPCState& state = npcStates[npc];
                 float x, y;
                 npc->GetPosition(x, y);
-                
-                // Texto Estado
-                // DrawText(state.stateName.c_str(), (int)x, (int)y - 40, 10, WHITE);
 
-                // Dibujar el abanico del radar
                 float angle = npc->GetRotation();
                 float angleRad = (angle - 90.0f) * (PI / 180.0f);
                 Vector2 center = { x, y };
 
-                for (int i = 0; i < (int)state.sensors.size(); i++) {
-                    RaySensor& s = state.sensors[i];
-                    float rayA = angleRad + s.angleOffset * (PI/180.0f);
-                    
-                    // Longitud visual (proporcional a lo que ve)
-                    float visLen = s.distance; 
-                    Vector2 end = { x + cosf(rayA)*visLen, y + sinf(rayA)*visLen };
-                    
-                    // Color: Verde = Libre, Rojo = Bloqueado, Blanco = ELEGIDO
+                for (int j = 0; j < (int)state.sensors.size(); j++) {
+                    RaySensor& s = state.sensors[j];
+                    float rayA = angleRad + s.angleOffset * (PI / 180.0f);
+
+                    float visLen = s.distance;
+                    Vector2 end = { x + cosf(rayA) * visLen, y + sinf(rayA) * visLen };
+
                     Color col = (s.hit) ? RED : GREEN;
-                    if (i == state.bestRayIndex) col = WHITE; // El rayo ganador
-                    
+                    if (j == state.bestRayIndex) col = WHITE;
+
                     DrawLineV(center, end, col);
-                    
-                    // Si es el ganador, dibujarlo más gordo (simulado pintando al lado)
-                    if (i == state.bestRayIndex) {
-                        Vector2 offset = {1, 1};
-                        DrawLineV({center.x+1, center.y}, {end.x+1, end.y}, col);
+
+                    if (j == state.bestRayIndex) {
+                        DrawLineV({ center.x + 1, center.y }, { end.x + 1, end.y }, col);
                     }
                 }
             }
-		}
-	}
+        }
+    }
 
-	return UPDATE_CONTINUE;
+    return UPDATE_CONTINUE;
 }
 
-// ... (Resto del archivo: CleanUp, CreateNPC, GetNPC igual que antes) ...
-// Asegúrate de mantener la función CreateNPC completa abajo
 bool NPCManager::CleanUp()
 {
-	LOG("Cleaning up NPC Manager");
-	for (Car* npc : npcCars) if (npc) delete npc;
-	npcCars.clear();
+    LOG("Cleaning up NPC Manager");
+
+    for (PushAbility* ability : npcAbilities)
+    {
+        if (ability) delete ability;
+    }
+    npcAbilities.clear();
+
+    // Cleanup cars
+    for (Car* npc : npcCars) if (npc) delete npc;
+    npcCars.clear();
+
     npcStates.clear();
-	return true;
+    return true;
+}
+
+void NPCManager::CheckAndUseAbility(Car* npc, PushAbility* ability)
+{
+    if (!npc || !ability) return;
+
+    // Check ability every 0.5 seconds (optimization)
+    NPCState& state = npcStates[npc];
+    state.lastAbilityCheck += GetFrameTime();
+
+    if (state.lastAbilityCheck < 0.5f) return;
+    state.lastAbilityCheck = 0.0f;
+
+    // Only use ability if it's ready
+    if (!ability->IsReady()) return;
+
+    // Get NPC position
+    float npcX, npcY;
+    npc->GetPosition(npcX, npcY);
+
+    const float DETECTION_RADIUS = 200.0f;  // Distance to detect other cars
+    bool shouldUseAbility = false;
+
+    // Check distance to player
+    if (App->player && App->player->GetCar())
+    {
+        float playerX, playerY;
+        App->player->GetCar()->GetPosition(playerX, playerY);
+
+        float dx = playerX - npcX;
+        float dy = playerY - npcY;
+        float distToPlayer = sqrtf(dx * dx + dy * dy);
+
+        if (distToPlayer < DETECTION_RADIUS)
+        {
+            shouldUseAbility = true;
+        }
+    }
+
+    // Check distance to other NPCs (if not already triggered)
+    if (!shouldUseAbility)
+    {
+        for (Car* otherNPC : npcCars)
+        {
+            if (otherNPC == npc || !otherNPC) continue;
+
+            float otherX, otherY;
+            otherNPC->GetPosition(otherX, otherY);
+
+            float dx = otherX - npcX;
+            float dy = otherY - npcY;
+            float distToOther = sqrtf(dx * dx + dy * dy);
+
+            if (distToOther < DETECTION_RADIUS)
+            {
+                shouldUseAbility = true;
+                break;
+            }
+        }
+    }
+
+    // Use ability if someone is nearby
+    if (shouldUseAbility)
+    {
+        float npcRotation = npc->GetRotation();
+        // IMPORTANT: pass the activating car so the ability can exclude it from being pushed
+        ability->Activate(npcX, npcY, npcRotation, npc);
+        LOG("NPC used push ability!");
+    }
 }
 
 void NPCManager::CreateNPC(const char* npcName, const char* texturePath)
@@ -367,8 +477,8 @@ void NPCManager::CreateNPC(const char* npcName, const char* texturePath)
 		npcCar->SetRotation(270.0f);
 	}
 
-	npcCar->SetMaxSpeed(800.0f);          
-	npcCar->SetReverseSpeed(400.0f);      
+	npcCar->SetMaxSpeed(1100.0f);          
+	npcCar->SetReverseSpeed(500.0f);      
 	npcCar->SetAcceleration(20.0f);       
 	npcCar->SetSteeringSensitivity(200.0f); 
 

@@ -91,13 +91,12 @@ bool ModulePlayer::Start()
 	}
 
 	// Configure player car
-	playerCar->SetColor(BLUE);
-	playerCar->SetMaxSpeed(800.0f);
-	playerCar->SetReverseSpeed(400.0f);
+	playerCar->SetMaxSpeed(1100.0f);
+	playerCar->SetReverseSpeed(500.0f);
 
 	// Initialize push ability
 	pushAbility = new PushAbility();
-	if (!pushAbility->Init(App))
+	if (!pushAbility->Init(App, true))
 	{
 		LOG("ERROR: Failed to initialize push ability");
 		delete pushAbility;
@@ -225,8 +224,8 @@ void ModulePlayer::HandleInput()
 			// Get player rotation
 			float playerRotation = playerCar->GetRotation();
 
-			// Activate ability with position AND rotation
-			pushAbility->Activate(playerX, playerY, playerRotation);
+			// Activate ability with position, rotation AND the car that's using it
+			pushAbility->Activate(playerX, playerY, playerRotation, playerCar);
 		}
 	}
 }

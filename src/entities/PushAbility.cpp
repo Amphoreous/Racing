@@ -4,6 +4,7 @@
 #include "modules/ModuleResources.h"
 #include "modules/ModuleAudio.h"
 #include "entities/NPCManager.h"
+#include "entities/Player.h"
 #include "entities/PhysBody.h"
 #include "entities/Car.h"
 #include "core/p2Point.h"
@@ -25,11 +26,13 @@ PushAbility::PushAbility()
 	, cooldownTimer(0.0f)
 	, cooldownDuration(COOLDOWN_DURATION)
 	, wasCooldownReady(false)
+	, isPlayerAbility(false)
 	, centerX(0.0f)
 	, centerY(0.0f)
 	, playerRotation(0.0f)
 	, pushRadius(PUSH_RADIUS)
 	, pushForce(PUSH_FORCE)
+	, activatingCar(nullptr)
 	, effectTexture({ 0 })
 	, effectScale(0.0f)
 	, effectRotation(0.0f)
@@ -45,9 +48,10 @@ PushAbility::~PushAbility()
 	DestroyPushSensor();
 }
 
-bool PushAbility::Init(Application* application)
+bool PushAbility::Init(Application* application, bool isPlayerAbility)
 {
 	app = application;
+	this->isPlayerAbility = isPlayerAbility;
 
 	effectTexture = app->resources->LoadTexture("assets/sprites/space_effect.png");
 	if (effectTexture.id == 0)
@@ -59,15 +63,24 @@ bool PushAbility::Init(Application* application)
 	if (app->audio)
 	{
 		abilitySfxId = app->audio->LoadFx("assets/audio/fx/ability.wav");
-		cooldownReadySfxId = app->audio->LoadFx("assets/audio/fx/cd_ability_down.wav");
-		LOG("Push ability sound effects loaded (Ability: %u, Cooldown: %u)", abilitySfxId, cooldownReadySfxId);
+
+		// Only load cooldown sound for player
+		if (isPlayerAbility)
+		{
+			cooldownReadySfxId = app->audio->LoadFx("assets/audio/fx/cd_ability_down.wav");
+			LOG("Push ability sound effects loaded (Ability: %u, Cooldown: %u) [PLAYER]", abilitySfxId, cooldownReadySfxId);
+		}
+		else
+		{
+			LOG("Push ability sound effects loaded (Ability: %u) [NPC]", abilitySfxId);
+		}
 	}
 
 	LOG("Push ability initialized successfully (Texture size: %dx%d)", effectTexture.width, effectTexture.height);
 	return true;
 }
 
-void PushAbility::Activate(float playerX, float playerY, float rotation)
+void PushAbility::Activate(float playerX, float playerY, float rotation, Car* activatingCar)
 {
 	if (!IsReady())
 	{
@@ -92,6 +105,7 @@ void PushAbility::Activate(float playerX, float playerY, float rotation)
 	centerX = playerX;
 	centerY = playerY;
 	playerRotation = rotation;
+	this->activatingCar = activatingCar;
 
 	effectScale = 0.0f;
 	effectRotation = 0.0f;
@@ -109,14 +123,14 @@ void PushAbility::Update()
 	{
 		cooldownTimer += deltaTime;
 
-		// Check if cooldown just finished
-		if (cooldownTimer >= cooldownDuration && !wasCooldownReady)
+		// Only play cooldown ready sound for player
+		if (isPlayerAbility && cooldownTimer >= cooldownDuration && !wasCooldownReady)
 		{
-			// Play cd_ability_down.wav
+			// Play cd_ability_down.wav (ONLY for player)
 			if (app && app->audio && cooldownReadySfxId > 0)
 			{
 				app->audio->PlayFx(cooldownReadySfxId);
-				LOG("Ability cooldown ready!");
+				LOG("Player ability cooldown ready!");
 			}
 			wasCooldownReady = true;
 		}
@@ -224,23 +238,49 @@ void PushAbility::ApplyPushToNearbyNPCs()
 	float forceMult = 1.0f - (activeTimer / activeDuration);
 	forceMult = forceMult * forceMult;
 
-	const std::vector<Car*>& npcs = app->npcManager->GetNPCs();
+	std::vector<Car*> allCars;  // Lista de TODOS los coches (jugador + NPCs)
 
-	int pushedCount = 0;
+	// Añadir jugador
+	if (app->player && app->player->GetCar())
+	{
+		allCars.push_back(app->player->GetCar());
+	}
+
+	// Añadir todos los NPCs
+	const std::vector<Car*>& npcs = app->npcManager->GetNPCs();
 	for (Car* npc : npcs)
 	{
-		if (!npc || !npc->GetPhysBody())
+		if (npc)
+		{
+			allCars.push_back(npc);
+		}
+	}
+
+	int pushedCount = 0;
+
+	// Empujar TODOS los coches cercanos (jugador + NPCs)
+	for (Car* car : allCars)
+	{
+		if (!car || !car->GetPhysBody())
 			continue;
 
-		float npcX, npcY;
-		npc->GetPosition(npcX, npcY);
+		// Skip the car that activated the ability
+		if (car == activatingCar)
+			continue;
 
-		float dx = npcX - centerX;
-		float dy = npcY - centerY;
+		float carX, carY;
+		car->GetPosition(carX, carY);
+
+		float dx = carX - centerX;
+		float dy = carY - centerY;
 		float distance = sqrtf(dx * dx + dy * dy);
 
-		if (distance < pushRadius && distance > 0.1f)
+		// Si el coche está dentro del radio
+		if (distance < pushRadius)
 		{
+			// Protect against division by zero
+			if (distance < 0.001f) distance = 0.001f;
+
 			float dirX = dx / distance;
 			float dirY = dy / distance;
 
@@ -250,19 +290,19 @@ void PushAbility::ApplyPushToNearbyNPCs()
 			float forceX = dirX * currentForce;
 			float forceY = dirY * currentForce;
 
-			npc->GetPhysBody()->ApplyForce(forceX, forceY);
+			car->GetPhysBody()->ApplyForce(forceX, forceY);
 
 			pushedCount++;
 
 			if (app->physics->IsDebugMode())
 			{
-				DrawLine((int)centerX, (int)centerY, (int)npcX, (int)npcY, RED);
+				DrawLine((int)centerX, (int)centerY, (int)carX, (int)carY, RED);
 			}
 		}
 	}
 
 	if (pushedCount > 0 && activeTimer < 0.1f)
 	{
-		LOG("Pushed %d NPCs", pushedCount);
+		LOG("Pushed %d cars (player + NPCs)", pushedCount);
 	}
 }

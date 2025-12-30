@@ -15,10 +15,10 @@ public:
 	~PushAbility();
 
 	// Initialize ability
-	bool Init(Application* app);
+	bool Init(Application* app, bool isPlayerAbility = false);
 
 	// Activate the ability at the player's position with player's rotation
-	void Activate(float playerX, float playerY, float playerRotation);
+	void Activate(float playerX, float playerY, float playerRotation, Car* activatingCar = nullptr);  // CHANGED: Added activatingCar parameter
 
 	// Update ability (handles animation, duration, effects)
 	void Update();
@@ -46,12 +46,14 @@ private:
 	float cooldownTimer;        // Time since last use
 	float cooldownDuration;     // Cooldown between uses (seconds)
 	bool wasCooldownReady;      // Track if cooldown was ready last frame (for sound trigger)
+	bool isPlayerAbility;       // Track if this is player's ability (for cooldown sound)
 
 	// Effect properties
 	float centerX, centerY;     // Center of the push area
 	float playerRotation;       // Player's rotation when ability was activated
 	float pushRadius;           // Radius of effect (pixels)
 	float pushForce;            // Force applied to enemies (pixels/second)
+	Car* activatingCar;         // ADDED: The car that activated this ability (to exclude from push)
 
 	// Visual effect
 	Texture2D effectTexture;    // space_effect.png
@@ -64,7 +66,7 @@ private:
 
 	// Sound effects
 	unsigned int abilitySfxId;           // ability.wav
-	unsigned int cooldownReadySfxId;     // cd_ability_down.wav
+	unsigned int cooldownReadySfxId;     // cd_ability_down.wav (ONLY for player)
 
 	// Helper methods
 	void CreatePushSensor();
