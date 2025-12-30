@@ -30,16 +30,25 @@ Car::Car(Application* app)
 	, driftImpulse(DEFAULT_DRIFT_IMPULSE)
 	, texture({ 0 })
 	, tint(WHITE)
-	, renderScale(0.075f)  // Scale 1890x1417 texture to 70x52 pixels (fits width, maintains aspect ratio)
+	, renderScale(0.075f)
 	, currentTerrain(NORMAL)
 	, terrainFrictionModifier(1.0f)
 	, terrainAccelerationModifier(1.0f)
-	, terrainSpeedModifier(1.0f)  // Initialize speed modifier
+	, terrainSpeedModifier(1.0f)
+	, motorSound({ 0 })
+	, isMotorPlaying(false)
 {
 }
 
 Car::~Car()
 {
+	// Stop motor sound if playing
+	if (IsMusicValid(motorSound) && isMotorPlaying)
+	{
+		StopMusicStream(motorSound);
+		isMotorPlaying = false;
+	}
+
 	// Clean up physics body through ModulePhysics
 	if (physBody && app && app->physics)
 	{
@@ -92,6 +101,22 @@ bool Car::Start()
 		LOG("WARNING: Failed to load car texture, using fallback rectangle");
 	}
 
+	// Load motor sound
+	if (app && app->resources)
+	{
+		motorSound = app->resources->LoadMusic("assets/audio/fx/car_motor.wav");
+		if (IsMusicValid(motorSound))
+		{
+			motorSound.looping = false;  // CHANGED: Disable auto-loop, we'll restart manually
+			SetMusicVolume(motorSound, 0.3f);  // 30% volume
+			LOG("Car motor sound loaded successfully");
+		}
+		else
+		{
+			LOG("WARNING: Failed to load car motor sound");
+		}
+	}
+
 	LOG("Car created successfully");
 	return true;
 }
@@ -113,7 +138,52 @@ update_status Car::Update()
 	// Clamp speed to max speed
 	ClampSpeed();
 
+	// Update motor sound based on movement
+	UpdateMotorSound();
+
 	return UPDATE_CONTINUE;
+}
+
+void Car::UpdateMotorSound()
+{
+	if (!IsMusicValid(motorSound))
+		return;
+
+	// Update music stream (required for playback)
+	UpdateMusicStream(motorSound);
+
+	float currentSpeed = GetCurrentSpeed();
+	const float MIN_SPEED_THRESHOLD = 5.0f;  // Minimum speed to play motor sound
+
+	// If car is moving
+	if (currentSpeed > MIN_SPEED_THRESHOLD)
+	{
+		// If motor is not playing, start it
+		if (!isMotorPlaying)
+		{
+			PlayMusicStream(motorSound);
+			isMotorPlaying = true;
+		}
+		// If motor sound finished, restart it (creates natural loop)
+		else if (!IsMusicStreamPlaying(motorSound))
+		{
+			PlayMusicStream(motorSound);  // Restart when finished
+		}
+
+		// Adjust pitch based on speed (makes motor sound more realistic)
+		float speedRatio = currentSpeed / maxSpeed;  // 0.0 to 1.0
+		float pitch = 0.8f + (speedRatio * 0.4f);     // Pitch from 0.8 to 1.2
+		SetMusicPitch(motorSound, pitch);
+	}
+	// If car stopped, stop motor sound
+	else
+	{
+		if (isMotorPlaying)
+		{
+			StopMusicStream(motorSound);
+			isMotorPlaying = false;
+		}
+	}
 }
 
 void Car::Draw() const

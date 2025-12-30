@@ -25,11 +25,11 @@ public:
 	void Draw() const override;
 
 	// Car controls
-	void Accelerate(float amount);      // Apply forward force (0.0 to 1.0)
-	void Reverse(float amount);         // Apply reverse force (0.0 to 1.0)
-	void Brake(float amount);           // Apply braking force (0.0 to 1.0)
-	void Steer(float direction);        // Steer left (-1.0) or right (1.0)
-	void Drift();                       // Apply lateral impulse for drifting
+	void Accelerate(float amount);
+	void Reverse(float amount);
+	void Brake(float amount);
+	void Steer(float direction);
+	void Drift();
 
 	// Car properties
 	void SetMaxSpeed(float speed);
@@ -55,13 +55,13 @@ public:
 
 private:
 	// Physics tuning parameters
-	float accelerationForce;      // Forward force magnitude
-	float reverseForce;           // Reverse force magnitude
-	float brakeForce;             // Braking force magnitude
-	float maxSpeed;               // Maximum forward speed clamp (pixels/sec)
-	float reverseMaxSpeed;        // Maximum reverse speed clamp (pixels/sec)
-	float steeringSensitivity;    // Angular velocity per steer input
-	float driftImpulse;           // Lateral impulse for drifting
+	float accelerationForce;
+	float reverseForce;
+	float brakeForce;
+	float maxSpeed;
+	float reverseMaxSpeed;
+	float steeringSensitivity;
+	float driftImpulse;
 
 	// Rendering
 	Texture2D texture;
@@ -72,12 +72,17 @@ private:
 	TerrainType currentTerrain;
 	float terrainFrictionModifier;
 	float terrainAccelerationModifier;
-	float terrainSpeedModifier;  // NEW: Separate modifier for max speed
+	float terrainSpeedModifier;
+
+	// Motor sound
+	Music motorSound;
+	bool isMotorPlaying;
 
 	// Helper methods
 	void ApplyFriction();
 	void ClampSpeed();
 	void ApplyDownforce();
+	void UpdateMotorSound();
 	vec2f GetForwardVector() const;
 	vec2f GetRightVector() const;
 
