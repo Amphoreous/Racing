@@ -44,7 +44,7 @@ jobs:
         $teamMembers = @(
           "GinerSofia",
           "HamdaouiZakaria", 
-          "MartinezJoel",
+          "MartinezJoel"
         )
         $teamString = $teamMembers -join "_"
         $version = "${{ github.event.inputs.version }}"
