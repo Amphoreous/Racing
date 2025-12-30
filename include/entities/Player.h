@@ -4,6 +4,7 @@
 #include "core/p2Point.h"
 
 class Car;
+class PushAbility;
 
 class ModulePlayer : public Module
 {
@@ -19,8 +20,12 @@ public:
 	// Access to player car
 	Car* GetCar() const { return playerCar; }
 
+	// Access to push ability
+	PushAbility* GetAbility() const { return pushAbility; }
+
 private:
 	Car* playerCar;
+	PushAbility* pushAbility;
 
 	void HandleInput();
 };

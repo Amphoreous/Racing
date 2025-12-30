@@ -1,4 +1,4 @@
-#include "entities/CheckpointManager.h"
+﻿#include "entities/CheckpointManager.h"
 #include "core/Application.h"
 #include "core/Map.h"
 #include "modules/ModulePhysics.h"
@@ -13,6 +13,8 @@ CheckpointManager::CheckpointManager(Application* app, bool start_enabled)
 	, currentLap(1)
 	, nextCheckpointOrder(1)
 	, totalCheckpoints(5)
+	, totalLaps(5)
+	, raceFinished(false)
 	, playerBody(nullptr)
 {
 }
@@ -41,6 +43,7 @@ bool CheckpointManager::Start()
 	LoadCheckpointsFromMap();
 
 	LOG("CheckpointManager initialized - %d checkpoints loaded", (int)checkpoints.size());
+	LOG("Race configuration: %d laps, %d checkpoints per lap", totalLaps, totalCheckpoints);
 	LOG("Current lap: %d, Next checkpoint: %d", currentLap, nextCheckpointOrder);
 
 	return true;
@@ -48,6 +51,15 @@ bool CheckpointManager::Start()
 
 update_status CheckpointManager::Update()
 {
+	// Check if race is finished
+	if (raceFinished)
+	{
+		// Race complete - stop the game
+		LOG("=== RACE FINISHED! ===");
+		LOG("Player completed %d laps!", totalLaps);
+		return UPDATE_STOP;
+	}
+
 	return UPDATE_CONTINUE;
 }
 
@@ -57,6 +69,43 @@ update_status CheckpointManager::PostUpdate()
 	if (App && App->physics && App->physics->IsDebugMode())
 	{
 		DebugRender();
+	}
+
+	// Draw race finish message if race is complete
+	if (raceFinished)
+	{
+		// Draw victory screen overlay
+		DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, Fade(BLACK, 0.7f));
+
+		const char* victoryText = "RACE COMPLETE!";
+		const char* lapsText = TextFormat("Completed %d laps!", totalLaps);
+		const char* exitText = "Press ESC to exit";
+
+		int titleFontSize = 60;
+		int subFontSize = 30;
+		int exitFontSize = 20;
+
+		int titleWidth = MeasureText(victoryText, titleFontSize);
+		int lapsWidth = MeasureText(lapsText, subFontSize);
+		int exitWidth = MeasureText(exitText, exitFontSize);
+
+		DrawText(victoryText,
+			SCREEN_WIDTH / 2 - titleWidth / 2,
+			SCREEN_HEIGHT / 2 - 60,
+			titleFontSize,
+			GOLD);
+
+		DrawText(lapsText,
+			SCREEN_WIDTH / 2 - lapsWidth / 2,
+			SCREEN_HEIGHT / 2 + 20,
+			subFontSize,
+			WHITE);
+
+		DrawText(exitText,
+			SCREEN_WIDTH / 2 - exitWidth / 2,
+			SCREEN_HEIGHT / 2 + 80,
+			exitFontSize,
+			GRAY);
 	}
 
 	return UPDATE_CONTINUE;
@@ -191,7 +240,7 @@ void CheckpointManager::CreateCheckpointSensor(MapObject* object, int order)
 	// Configure as sensor (no physical collision, just detection)
 	sensor->SetSensor(true);
 
-	// VERIFICACI�N: Leer la posici�n que Box2D realmente almacen�
+	// VERIFICACIÓN: Leer la posición que Box2D realmente almacenó
 	float verifyX, verifyY;
 	sensor->GetPositionF(verifyX, verifyY);
 	LOG("  Box2D returned position (pixels): (%.2f, %.2f)", verifyX, verifyY);
@@ -231,6 +280,10 @@ Checkpoint* CheckpointManager::FindCheckpointBySensor(PhysBody* sensor)
 
 void CheckpointManager::OnCollisionEnter(PhysBody* other)
 {
+	// Don't process if race is already finished
+	if (raceFinished)
+		return;
+
 	// Check if collision is with player car
 	if (!other || other != playerBody)
 		return;
@@ -317,9 +370,21 @@ bool CheckpointManager::ValidateCheckpointSequence(int checkpointOrder)
 		if (allCheckpointsCrossed)
 		{
 			// Valid lap completion!
+			LOG("=== LAP %d COMPLETE! ===", currentLap);
+
+			// Check if this was the final lap
+			if (currentLap >= totalLaps)
+			{
+				raceFinished = true;
+				LOG("╔═══════════════════════════════════╗");
+				LOG("║   RACE FINISHED - %d LAPS DONE!   ║", totalLaps);
+				LOG("╚═══════════════════════════════════╝");
+				return true;
+			}
+
+			// Move to next lap
 			currentLap++;
-			LOG("=== LAP %d COMPLETE! ===", currentLap - 1);
-			LOG("Starting lap %d", currentLap);
+			LOG("Starting lap %d / %d", currentLap, totalLaps);
 
 			// Reset all checkpoints for next lap
 			ResetCheckpoints();
@@ -403,19 +468,30 @@ void CheckpointManager::DebugRender() const
 	// Draw checkpoint information overlay
 	int yOffset = 180;  // Below physics debug info
 
-	DrawRectangle(10, yOffset, 300, 160, Fade(BLACK, 0.8f));
-	DrawRectangleLines(10, yOffset, 300, 160, GREEN);
+	DrawRectangle(10, yOffset, 300, 180, Fade(BLACK, 0.8f));
+	DrawRectangleLines(10, yOffset, 300, 180, raceFinished ? GOLD : GREEN);
 
-	DrawText("=== CHECKPOINTS ===", 20, yOffset + 10, 20, GREEN);
-	DrawText(TextFormat("Lap: %d", currentLap), 20, yOffset + 35, 18, WHITE);
+	DrawText("=== CHECKPOINTS ===", 20, yOffset + 10, 20, raceFinished ? GOLD : GREEN);
 
-	// Show next checkpoint name
-	const char* nextName = "FL";
-	if (nextCheckpointOrder > 0 && nextCheckpointOrder <= 5)
+	// Show lap progress
+	const char* lapText = TextFormat("Lap: %d / %d", currentLap, totalLaps);
+	DrawText(lapText, 20, yOffset + 35, 18, raceFinished ? GOLD : WHITE);
+
+	// Show race status
+	if (raceFinished)
 	{
-		nextName = TextFormat("C%d", nextCheckpointOrder);
+		DrawText("RACE COMPLETE!", 20, yOffset + 55, 18, GOLD);
 	}
-	DrawText(TextFormat("Next: %s", nextName), 20, yOffset + 55, 18, YELLOW);
+	else
+	{
+		// Show next checkpoint name
+		const char* nextName = "FL";
+		if (nextCheckpointOrder > 0 && nextCheckpointOrder <= 5)
+		{
+			nextName = TextFormat("C%d", nextCheckpointOrder);
+		}
+		DrawText(TextFormat("Next: %s", nextName), 20, yOffset + 55, 18, YELLOW);
+	}
 
 	// Show checkpoint status
 	int crossed = 0;
@@ -428,7 +504,7 @@ void CheckpointManager::DebugRender() const
 		crossed == totalCheckpoints ? GREEN : WHITE);
 
 	// Show if ready for finish line
-	if (IsLapComplete())
+	if (IsLapComplete() && !raceFinished)
 	{
 		DrawText(">>> READY FOR FINISH! <<<", 20, yOffset + 95, 16, GREEN);
 	}
@@ -436,6 +512,11 @@ void CheckpointManager::DebugRender() const
 	// Legend
 	DrawText("Purple = Sensors (hitboxes)", 20, yOffset + 115, 14, PURPLE);
 	DrawText("Cross = Center point", 20, yOffset + 135, 14, WHITE);
+
+	if (raceFinished)
+	{
+		DrawText("Press ESC to exit", 20, yOffset + 155, 14, GRAY);
+	}
 
 	// Draw checkpoint names in world space (within BeginMode2D)
 	for (const auto& checkpoint : checkpoints)
@@ -448,7 +529,9 @@ void CheckpointManager::DebugRender() const
 
 		// Color based on status
 		Color textColor = WHITE;
-		if (checkpoint.crossed)
+		if (raceFinished)
+			textColor = GOLD;
+		else if (checkpoint.crossed)
 			textColor = GREEN;
 		else if (checkpoint.order == nextCheckpointOrder)
 			textColor = YELLOW;

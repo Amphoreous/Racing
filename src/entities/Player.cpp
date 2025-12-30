@@ -1,12 +1,15 @@
 #include "entities/Player.h"
+#include "entities/PushAbility.h"
 #include "core/Application.h"
 #include "core/Map.h"
 #include "entities/Car.h"
+#include "modules/ModulePhysics.h"
 #include "raylib.h"
 
 ModulePlayer::ModulePlayer(Application* app, bool start_enabled)
 	: Module(app, start_enabled)
 	, playerCar(nullptr)
+	, pushAbility(nullptr)
 {
 }
 
@@ -64,9 +67,7 @@ bool ModulePlayer::Start()
 		// Set player car position
 		playerCar->SetPosition(worldX, worldY);
 
-		// CRITICAL: Set starting rotation
-		// Default car rotation is 90° (facing up), we need 270° (facing down)
-		// This is a 180° rotation from the default orientation
+		// Set starting rotation (270° = facing down)
 		playerCar->SetRotation(270.0f);
 
 		LOG("Player car positioned at (%.2f, %.2f) with rotation 270°", worldX, worldY);
@@ -76,13 +77,22 @@ bool ModulePlayer::Start()
 		LOG("Warning: No start position found for Player in map, using default (400, 300)");
 		// Fallback to default position
 		playerCar->SetPosition(400.0f, 300.0f);
-		playerCar->SetRotation(90.0f);  // Face up by default
+		playerCar->SetRotation(270.0f);
 	}
 
 	// Configure player car
 	playerCar->SetColor(BLUE);
 	playerCar->SetMaxSpeed(800.0f);
 	playerCar->SetReverseSpeed(400.0f);
+
+	// Initialize push ability
+	pushAbility = new PushAbility();
+	if (!pushAbility->Init(App))
+	{
+		LOG("ERROR: Failed to initialize push ability");
+		delete pushAbility;
+		pushAbility = nullptr;
+	}
 
 	LOG("Player car created successfully");
 	return true;
@@ -99,6 +109,12 @@ update_status ModulePlayer::Update()
 	// Update car physics
 	playerCar->Update();
 
+	// Update push ability
+	if (pushAbility)
+	{
+		pushAbility->Update();
+	}
+
 	return UPDATE_CONTINUE;
 }
 
@@ -110,12 +126,34 @@ update_status ModulePlayer::PostUpdate()
 	// Draw the car (after BeginDrawing)
 	playerCar->Draw();
 
+	// Draw push ability effect
+	if (pushAbility)
+	{
+		pushAbility->Draw();
+	}
+
+	// Draw ability cooldown UI (optional debug)
+	if (pushAbility && App->physics && App->physics->IsDebugMode())
+	{
+		float progress = pushAbility->GetCooldownProgress();
+		DrawRectangle(10, 350, 200, 30, Fade(BLACK, 0.8f));
+		DrawRectangle(10, 350, (int)(200 * progress), 30, pushAbility->IsReady() ? GREEN : YELLOW);
+		DrawText(pushAbility->IsReady() ? "ABILITY READY" : "COOLDOWN", 15, 355, 20, WHITE);
+	}
+
 	return UPDATE_CONTINUE;
 }
 
 bool ModulePlayer::CleanUp()
 {
 	LOG("Cleaning up player module");
+
+	// Cleanup push ability
+	if (pushAbility)
+	{
+		delete pushAbility;
+		pushAbility = nullptr;
+	}
 
 	// Cleanup player car
 	if (playerCar)
@@ -137,7 +175,7 @@ void ModulePlayer::HandleInput()
 	{
 		playerCar->Accelerate(1.0f);
 	}
-	// Reverse (changed from Brake to Reverse!)
+	// Reverse
 	else if (IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN))
 	{
 		playerCar->Reverse(1.0f);
@@ -158,9 +196,19 @@ void ModulePlayer::HandleInput()
 		playerCar->Steer(0.0f);
 	}
 
-	// Drift
-	if (IsKeyDown(KEY_SPACE))
+	// PUSH ABILITY (replaces drift)
+	if (IsKeyPressed(KEY_SPACE))
 	{
-		playerCar->Drift();
+		if (pushAbility)
+		{
+			float playerX, playerY;
+			playerCar->GetPosition(playerX, playerY);
+
+			// Get player rotation
+			float playerRotation = playerCar->GetRotation();
+
+			// Activate ability with position AND rotation
+			pushAbility->Activate(playerX, playerY, playerRotation);
+		}
 	}
 }

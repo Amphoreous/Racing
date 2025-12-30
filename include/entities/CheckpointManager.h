@@ -41,6 +41,10 @@ public:
 	int GetNextCheckpointOrder() const { return nextCheckpointOrder; }
 	bool IsLapComplete() const;
 
+	// Race completion
+	bool IsRaceFinished() const { return raceFinished; }
+	int GetTotalLaps() const { return totalLaps; }
+
 	// Debug rendering
 	void DebugRender() const;
 
@@ -51,6 +55,8 @@ private:
 	int currentLap;                        // Current lap number (starts at 1)
 	int nextCheckpointOrder;               // Next checkpoint to cross (1-5, or 0 for FL)
 	int totalCheckpoints;                  // Total ordered checkpoints (5 in C1-C5)
+	int totalLaps;                         // Total laps to complete the race (5)
+	bool raceFinished;                     // Flag indicating race is complete
 
 	PhysBody* playerBody;                  // Reference to player car body
 
