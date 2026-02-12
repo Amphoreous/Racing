@@ -1,0 +1,69 @@
+# For most projects, this workflow file will not need changing; you simply need
+# to commit it to your repository.
+#
+# You may wish to alter this file to override the set of languages analyzed,
+# or to provide custom queries or build logic.
+#
+name: "CodeQL Advanced"
+
+on:
+  push:
+    branches: [ "main" ] # Kept Target default. Change to "**" if you want all branches like your source.
+  pull_request:
+    branches: [ "main" ]
+  schedule:
+    - cron: '24 0 * * 1'
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    # LOGIC UPDATE: Added check for 'c-cpp' to use windows-latest, strictly required for MSBuild/bat files.
+    runs-on: ${{ (matrix.language == 'swift' && 'macos-latest') || (matrix.language == 'c-cpp' && 'windows-latest') || 'ubuntu-latest' }}
+    permissions:
+      security-events: write
+      packages: read
+      actions: read
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        # I removed 'actions' to focus on your C++ requirement, but you can add it back if needed.
+        - language: c-cpp
+          build-mode: manual 
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    # Initializes the CodeQL tools for scanning.
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v4
+      with:
+        languages: ${{ matrix.language }}
+        build-mode: ${{ matrix.build-mode }}
+
+    # -------------------------------------------------------------------------
+    # CUSTOM BUILD STEPS (Merged from your original workflow)
+    # -------------------------------------------------------------------------
+    
+    # 1. Install MSBuild (Required for Racing.sln)
+    - name: Install Visual Studio Build Tools
+      if: matrix.build-mode == 'manual' && matrix.language == 'c-cpp'
+      uses: microsoft/setup-msbuild@v1.1
+
+    # 2. Run your specific build scripts
+    - name: Build project
+      if: matrix.build-mode == 'manual' && matrix.language == 'c-cpp'
+      shell: cmd
+      run: |
+        .\build-VisualStudio2022.bat
+        msbuild Racing.sln /p:Configuration=Release /p:Platform=x64
+
+    # -------------------------------------------------------------------------
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v4
+      with:
+        category: "/language:${{matrix.language}}"
